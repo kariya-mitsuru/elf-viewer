@@ -49,7 +49,6 @@ release:     ## Bump version and open a pull request to main  (VERSION=x.y.z req
 	git commit -m "chore: bump version to $(VERSION)"
 	git push
 	gh pr create --title "chore: bump version to $(VERSION)" --body "" --base main
-	gh pr merge --auto --merge
 
 help:        ## Show this help
 	@grep -E '^[a-zA-Z_-]+:[ \t]+##' $(MAKEFILE_LIST) | \
