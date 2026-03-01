@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Mitsuru Kariya
+# SPDX-License-Identifier: MIT
+
+name: Auto Tag
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  auto-tag:
+    name: Create tag if version changed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if package.json version changed
+        id: check
+        run: |
+          git show HEAD^:frontend/package.json > /tmp/prev_package.json 2>/dev/null
+          if [ $? -eq 0 ]; then
+            PREV=$(node -p "require('/tmp/prev_package.json').version")
+          else
+            PREV=""
+          fi
+          CURR=$(node -p "require('./frontend/package.json').version")
+          echo "prev=$PREV"
+          echo "curr=$CURR"
+          if [ -n "$PREV" ] && [ "$PREV" != "$CURR" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURR" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push tag
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.check.outputs.version }}"
+          git push origin "v${{ steps.check.outputs.version }}"

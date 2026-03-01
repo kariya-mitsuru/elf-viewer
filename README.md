@@ -137,9 +137,9 @@ make web-dev  # http://localhost:5173
 
 ## Version & Release
 
-To release a new version, use the `make release` command or run the **Bump Version & Release** workflow in GitHub Actions (Actions → Bump Version & Release → enter version).
+To release a new version, run `make release VERSION=x.y.z` from the `dev` branch (or any non-main branch).
 
-`make release` bumps the version in `frontend/package.json`, creates a commit and a `v*.*.*` tag, and pushes both. The GitHub Actions release workflow then builds Linux binaries (amd64 and arm64) and publishes a GitHub Release.
+`make release` bumps the version in `frontend/package.json`, commits the change, pushes the branch, and opens a pull request to `main`. The pull request is automatically approved and merged once all CI checks pass. When the merge lands on `main`, a `v*.*.*` tag is created automatically, which triggers the release workflow to build Linux binaries (amd64 and arm64) and publish a GitHub Release.
 
 ---
 

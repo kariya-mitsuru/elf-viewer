@@ -20,3 +20,8 @@ jobs:
         run: gh pr review "${{ github.event.pull_request.number }}" --approve --repo "${{ github.repository }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge
+        run: gh pr merge "${{ github.event.pull_request.number }}" --auto --merge --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

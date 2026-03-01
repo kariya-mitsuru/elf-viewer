@@ -42,10 +42,14 @@ lint:        ## Run ESLint
 fmt:         ## Format source files with Prettier
 	cd frontend && npm run format
 
-release:     ## Trigger the GitHub Actions release workflow  (VERSION=x.y.z required)
+release:     ## Bump version and open a pull request to main  (VERSION=x.y.z required)
 	@[ -n "$(VERSION)" ] || { printf "Error: VERSION is required.\nUsage: make release VERSION=x.y.z\n"; exit 1; }
-	gh workflow run bump-release.yml --field version=$(VERSION)
-	@echo "Workflow triggered for v$(VERSION). Check progress in GitHub Actions."
+	cd frontend && npm version "$(VERSION)" --no-git-tag-version
+	git add frontend/package.json
+	git commit -m "chore: bump version to $(VERSION)"
+	git push
+	gh pr create --title "chore: bump version to $(VERSION)" --body "" --base main
+	gh pr merge --auto --merge
 
 help:        ## Show this help
 	@grep -E '^[a-zA-Z_-]+:[ \t]+##' $(MAKEFILE_LIST) | \
