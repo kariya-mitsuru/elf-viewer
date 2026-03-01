@@ -13,11 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+          token: ${{ secrets.GH_PAT }}
 
       - name: Check if package.json version changed
         id: check
@@ -46,8 +46,3 @@ jobs:
           git tag "v${{ steps.check.outputs.version }}"
           git push origin "v${{ steps.check.outputs.version }}"
 
-      - name: Trigger release workflow
-        if: steps.check.outputs.changed == 'true'
-        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "v${{ steps.check.outputs.version }}"
-        env:
-          GH_TOKEN: ${{ github.token }}

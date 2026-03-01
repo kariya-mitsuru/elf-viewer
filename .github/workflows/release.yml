@@ -7,7 +7,6 @@ on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:
 
 jobs:
   build:
@@ -56,7 +55,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: elf-viewer-linux-${{ matrix.arch }}
-          path: build/bin/elf-viewer-${GITHUB_REF_NAME}-linux-${{ matrix.arch }}
+          path: build/bin/elf-viewer-${{ github.ref_name }}-linux-${{ matrix.arch }}
 
   build-web:
     name: Build Web
@@ -77,7 +76,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: elf-viewer-web
-          path: elf-viewer-${GITHUB_REF_NAME}.html
+          path: elf-viewer-${{ github.ref_name }}.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
