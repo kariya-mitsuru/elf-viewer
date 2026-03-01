@@ -10,9 +10,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-amd64:
-    name: Build (Linux amd64)
-    runs-on: ubuntu-latest
+  build:
+    name: Build (Linux ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -44,57 +51,16 @@ jobs:
         run: wails build -tags webkit2_41
 
       - name: Rename binary
-        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-amd64
+        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: elf-viewer-linux-amd64
-          path: build/bin/elf-viewer-linux-amd64
-
-  build-arm64:
-    name: Build (Linux arm64)
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Verify version matches tag
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          CURRENT=$(cd frontend && node -p "require('./package.json').version")
-          if [ "$VERSION" != "$CURRENT" ]; then
-            echo "::error::Tag v$VERSION does not match package.json $CURRENT"
-            exit 1
-          fi
-
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      - name: Build
-        run: wails build -tags webkit2_41
-
-      - name: Rename binary
-        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-arm64
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: elf-viewer-linux-arm64
-          path: build/bin/elf-viewer-linux-arm64
+          name: elf-viewer-linux-${{ matrix.arch }}
+          path: build/bin/elf-viewer-linux-${{ matrix.arch }}
 
   release:
     name: Create Release
-    needs: [build-amd64, build-arm64]
+    needs: [build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
