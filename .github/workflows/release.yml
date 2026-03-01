@@ -24,14 +24,14 @@ jobs:
         with:
           node-version: '24'
 
-      # Ensure package.json version matches the tag.
-      # Normally these should already match (update package.json before tagging),
-      # but this step enforces consistency in the build artifact.
-      # Note: this only modifies the runner's working copy; the repo is unchanged.
-      - name: Set version from tag
+      - name: Verify version matches tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          cd frontend && npm version "$VERSION" --no-git-tag-version
+          CURRENT=$(cd frontend && node -p "require('./package.json').version")
+          if [ "$VERSION" != "$CURRENT" ]; then
+            echo "::error::Tag v$VERSION does not match package.json $CURRENT"
+            exit 1
+          fi
 
       - name: Install system dependencies
         run: sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
@@ -65,10 +65,14 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Set version from tag
+      - name: Verify version matches tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          cd frontend && npm version "$VERSION" --no-git-tag-version  # runner only
+          CURRENT=$(cd frontend && node -p "require('./package.json').version")
+          if [ "$VERSION" != "$CURRENT" ]; then
+            echo "::error::Tag v$VERSION does not match package.json $CURRENT"
+            exit 1
+          fi
 
       - name: Install system dependencies
         run: sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev

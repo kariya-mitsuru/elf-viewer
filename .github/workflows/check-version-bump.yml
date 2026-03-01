@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Mitsuru Kariya
+# SPDX-License-Identifier: MIT
+
+name: Check Version Bump
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Reject version bump from fork
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for unauthorized version bump
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.fork }}" != "true" ]; then
+            echo "Not a fork PR, skipping check."
+            exit 0
+          fi
+          BASE_REF="${{ github.base_ref }}"
+          git show "origin/${BASE_REF}:frontend/package.json" > /tmp/base_package.json
+          BASE_VERSION=$(node -p "require('/tmp/base_package.json').version")
+          HEAD_VERSION=$(node -p "require('./frontend/package.json').version")
+          echo "base=$BASE_VERSION, head=$HEAD_VERSION"
+          if [ "$BASE_VERSION" != "$HEAD_VERSION" ]; then
+            echo "::error::Version bumps in package.json are not allowed from fork PRs."
+            exit 1
+          fi
+          echo "Version check passed."
