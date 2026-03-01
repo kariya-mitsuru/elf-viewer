@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { defineConfig } from 'vite'
+import { viteSingleFile } from 'vite-plugin-singlefile'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { readFileSync } from 'fs'
@@ -10,11 +11,13 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'))
 
 export default defineConfig({
+  plugins: [viteSingleFile()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     __GIT_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'dev'),
   },
+  base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,

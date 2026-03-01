@@ -51,16 +51,56 @@ jobs:
         run: wails build -tags webkit2_41
 
       - name: Rename binary
-        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-${{ matrix.arch }}
+        run: mv build/bin/elf-viewer build/bin/elf-viewer-${GITHUB_REF_NAME}-linux-${{ matrix.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: elf-viewer-linux-${{ matrix.arch }}
-          path: build/bin/elf-viewer-linux-${{ matrix.arch }}
+          path: build/bin/elf-viewer-${GITHUB_REF_NAME}-linux-${{ matrix.arch }}
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Build
+        run: cd frontend && npm ci && npm run build
+
+      - name: Rename for release
+        run: cp frontend/dist/index.html elf-viewer-${GITHUB_REF_NAME}.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elf-viewer-web
+          path: elf-viewer-${GITHUB_REF_NAME}.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist/
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: [build-web]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v4
 
   release:
     name: Create Release
-    needs: [build]
+    needs: [build, build-web]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -79,5 +119,6 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "ELF Viewer $GITHUB_REF_NAME" \
             --generate-notes \
-            dist/elf-viewer-linux-amd64 \
-            dist/elf-viewer-linux-arm64
+            dist/elf-viewer-${GITHUB_REF_NAME}-linux-amd64 \
+            dist/elf-viewer-${GITHUB_REF_NAME}-linux-arm64 \
+            dist/elf-viewer-${GITHUB_REF_NAME}.html
