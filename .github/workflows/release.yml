@@ -1,0 +1,112 @@
+# SPDX-FileCopyrightText: 2026 Mitsuru Kariya
+# SPDX-License-Identifier: MIT
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build-amd64:
+    name: Build (Linux amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Ensure package.json version matches the tag.
+      # Normally these should already match (update package.json before tagging),
+      # but this step enforces consistency in the build artifact.
+      # Note: this only modifies the runner's working copy; the repo is unchanged.
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd frontend && npm version "$VERSION" --no-git-tag-version
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build
+        run: wails build -tags webkit2_41
+
+      - name: Rename binary
+        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elf-viewer-linux-amd64
+          path: build/bin/elf-viewer-linux-amd64
+
+  build-arm64:
+    name: Build (Linux arm64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd frontend && npm version "$VERSION" --no-git-tag-version  # runner only
+
+      - name: Install system dependencies
+        run: sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build
+        run: wails build -tags webkit2_41
+
+      - name: Rename binary
+        run: mv build/bin/elf-viewer build/bin/elf-viewer-linux-arm64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elf-viewer-linux-arm64
+          path: build/bin/elf-viewer-linux-arm64
+
+  release:
+    name: Create Release
+    needs: [build-amd64, build-arm64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "ELF Viewer $GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/elf-viewer-linux-amd64 \
+            dist/elf-viewer-linux-arm64

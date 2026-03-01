@@ -1,0 +1,20 @@
+# Local Claude Code settings (user-specific)
+.claude/settings.local.json
+
+# Wails build output
+build/bin/
+
+# Go build output (root binary from `go build`)
+elf-viewer
+
+# Frontend build output
+frontend/dist/
+
+# npm dependencies
+frontend/node_modules/
+
+# Wails internal checksum file (auto-generated on wails dev/build)
+frontend/package.json.md5
+
+# Vite dependency pre-bundling cache (auto-generated on vite dev)
+frontend/.vite/

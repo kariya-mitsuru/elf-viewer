@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 Mitsuru Kariya
+# SPDX-License-Identifier: MIT
+
+name: Bump Version & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without v prefix (e.g. 1.2.3)'
+        required: true
+        type: string
+
+jobs:
+  bump-and-tag:
+    name: Bump version and create tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use the default token; branch protection bypass must be
+          # configured in GitHub Settings for github-actions[bot].
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version in package.json
+        run: cd frontend && npm version "${{ inputs.version }}" --no-git-tag-version
+
+      - name: Commit and tag
+        run: |
+          git add frontend/package.json
+          git commit -m "chore: bump version to ${{ inputs.version }}"
+          git tag "v${{ inputs.version }}"
+          git push origin HEAD --tags

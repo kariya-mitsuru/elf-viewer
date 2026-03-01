@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Mitsuru Kariya
+# SPDX-License-Identifier: MIT
+
+name: Auto Approve
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  auto-approve:
+    name: Auto-approve owner PRs
+    # Only approve PRs opened by the repository owner
+    if: github.event.pull_request.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Approve
+        run: gh pr review "${{ github.event.pull_request.number }}" --approve --repo "${{ github.repository }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

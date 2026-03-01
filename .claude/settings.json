@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(wails generate:*)",
+      "Bash(wails build:*)",
+      "Bash(wails version:*)",
+      "Bash(wails doctor:*)",
+      "Bash(go build:*)",
+      "Bash(go vet:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go get:*)",
+      "Bash(go doc:*)",
+      "Bash(go version:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(readelf:*)",
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git commit:*)",
+      "Bash(awk:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run lint)"
+    ]
+  }
+}

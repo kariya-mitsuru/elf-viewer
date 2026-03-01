@@ -1,0 +1,958 @@
+/* SPDX-FileCopyrightText: 2026 Mitsuru Kariya */
+/* SPDX-License-Identifier: MIT */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* Welcome screen */
+.welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 16px;
+}
+
+.welcome h1 {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.welcome button, #openAnotherBtn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    background: #89b4fa;
+    color: #1e1e2e;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.welcome button:hover, #openAnotherBtn:hover {
+    background: #74c7ec;
+}
+
+.hint {
+    font-size: 12px;
+    color: #6c7086;
+}
+
+/* Error */
+.error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: #f38ba8;
+    font-size: 16px;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Map view */
+.map-view {
+    padding: 16px;
+}
+
+.map-view header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #313244;
+}
+
+.map-view header h1 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#openAnotherBtn {
+    font-size: 12px;
+    padding: 6px 14px;
+    flex-shrink: 0;
+}
+
+.map-container {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    width: fit-content;
+    margin: 0 auto;
+}
+
+/* ===== Single CSS Grid for the entire memory map ===== */
+.memory-map {
+    display: grid;
+    /* grid-template-columns set dynamically via JS (depends on non-LOAD segment lane count) */
+    /* grid-template-rows set dynamically via JS */
+    column-gap: 6px;
+    row-gap: 2px;
+}
+
+/* Header row */
+.map-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: #a6adc8;
+    padding: 4px 0;
+    white-space: nowrap;
+    border-bottom: 1px solid #313244;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    background: #1e1e2e;
+    z-index: 10;
+}
+
+/* Address cells (columns 1 and 5) */
+.addr-cell {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 11px;
+    color: #a6adc8;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2px 0;
+    white-space: nowrap;
+}
+
+.addr-cell.bottom {
+    align-items: flex-end;
+}
+
+/* Offset cells (column 2) */
+.offset-cell {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 11px;
+    color: #a6adc8;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 2px 0;
+    white-space: nowrap;
+}
+
+/* Section cells (column 3) */
+.sec-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 3px;
+    padding: 2px 8px;
+    color: #fff;
+    font-size: 11px;
+    min-height: 20px;
+    white-space: nowrap;
+}
+
+.sec-item.bss {
+    opacity: 1;
+}
+
+.sec-item.leading-gap {
+    background: rgba(120, 120, 120, 0.2) !important;
+    color: #6c7086;
+    font-size: 10px;
+}
+
+/* Segment info cells — normal case */
+.seg-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+    min-width: 130px;
+    color: #fff;
+    text-align: center;
+    z-index: 1;
+}
+
+/* Segment info cells — BSS split: file-backed part */
+.seg-file-part {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 6px 0 0;
+    padding: 4px 12px;
+    min-width: 130px;
+    color: #fff;
+    text-align: center;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Segment info cells — BSS split: no-file-data part */
+.seg-bss-part {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 0 6px 0;
+    padding: 4px 12px;
+    min-width: 130px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    text-align: center;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Background extension for LOAD segment boxes */
+.seg-bg {
+    z-index: 0;
+}
+
+
+.ph-label {
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.detail {
+    font-size: 11px;
+    opacity: 0.9;
+}
+
+/* Gap cells (span from section col to just before seg-info) */
+.gap-cell {
+    grid-column: 3 / -2;
+    background: rgba(80, 80, 80, 0.16);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    color: #6c7086;
+    font-size: 11px;
+}
+
+/* Legend */
+.legend {
+    position: sticky;
+    top: 16px;
+    min-width: 150px;
+    padding: 12px;
+    background: #313244;
+    border-radius: 8px;
+}
+
+.legend h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* Dynamic entry labels */
+.dyn-entry {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 10px;
+    color: #1e1e2e;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 0 6px;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.75);
+    z-index: 2;
+}
+
+/* Non-LOAD segment overlay */
+.non-load-seg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #1e1e2e;
+    font-size: 10px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.75);
+    white-space: nowrap;
+    z-index: 2;
+}
+
+.non-load-seg .nl-type {
+    font-weight: 600;
+    font-size: 11px;
+}
+
+/* Segment colors */
+.rx  { background: rgba(70, 130, 220, 0.86); }
+.rw  { background: rgba(70, 190, 100, 0.86); }
+.ro  { background: rgba(220, 200, 60, 0.86); }
+.other { background: rgba(160, 160, 160, 0.86); }
+
+/* ===== Application layout (sidebar + tabs) ===== */
+
+#app {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: #181825;
+    border-bottom: 1px solid #313244;
+    flex-shrink: 0;
+}
+
+.app-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: #89b4fa;
+    white-space: nowrap;
+}
+
+.file-path {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 12px;
+    color: #a6adc8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.app-header button {
+    padding: 5px 14px;
+    border: none;
+    border-radius: 5px;
+    background: #313244;
+    color: #cdd6f4;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.app-header button:hover { background: #45475a; }
+
+.app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* ===== Sidebar ===== */
+
+.sidebar {
+    width: 180px;
+    flex-shrink: 0;
+    background: #181825;
+    border-right: 1px solid #313244;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.sidebar-group {
+    font-size: 10px;
+    font-weight: 700;
+    color: #6c7086;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 12px 4px;
+}
+
+.sidebar-item {
+    display: block;
+    width: 100%;
+    padding: 7px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 13px;
+    color: #a6adc8;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.1s;
+}
+.sidebar-item:hover:not(.disabled) { background: #313244; color: #cdd6f4; }
+.sidebar-item.active { background: #45475a; color: #89b4fa; font-weight: 600; }
+.sidebar-item.disabled { color: #45475a; cursor: default; }
+
+/* ===== Tab bar ===== */
+
+.content-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.tab-bar {
+    display: flex;
+    align-items: stretch;
+    background: #181825;
+    border-bottom: 1px solid #313244;
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 14px;
+    min-height: 34px;
+    cursor: pointer;
+    border-right: 1px solid #313244;
+    color: #7f849c;
+    font-size: 13px;
+    white-space: nowrap;
+    background: #181825;
+    flex-shrink: 0;
+}
+.tab:hover { color: #cdd6f4; background: #1e1e2e; }
+.tab.active { color: #cdd6f4; background: #1e1e2e; border-bottom: 2px solid #89b4fa; }
+
+.tab-label { cursor: pointer; }
+
+.tab-close {
+    background: none;
+    border: none;
+    color: #585b70;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 3px;
+    line-height: 1;
+}
+.tab-close:hover { background: #45475a; color: #cdd6f4; }
+
+.tab-content-area {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.tab-content {
+    height: 100%;
+    overflow: auto;
+    padding: 16px;
+}
+
+/* Memory map inside tab: override padding */
+.tab-content .map-container {
+    padding: 0;
+}
+
+/* ===== Section navigator ===== */
+
+.section-nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #181825;
+    border-bottom: 1px solid #313244;
+    padding: 6px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+
+.section-nav-link {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 12px;
+    color: #89b4fa;
+    text-decoration: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.section-nav-link:hover {
+    background: #313244;
+    color: #cdd6f4;
+}
+
+/* Sub-tab buttons: reset browser defaults; styled like .view-subtitle */
+button.section-nav-link {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #6c7086;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+button.section-nav-link:hover {
+    color: #cdd6f4;
+}
+
+.section-nav-link.active {
+    color: #cdd6f4;
+    background: #45475a;
+    box-shadow: inset 0 -2px 0 #89b4fa;
+}
+
+/* ===== Data tables for views ===== */
+
+.view-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #cdd6f4;
+}
+
+.view-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+    color: #a6adc8;
+}
+
+.view-note {
+    font-size: 12px;
+    color: #6c7086;
+    margin-top: 8px;
+}
+
+.empty-msg {
+    color: #6c7086;
+    font-size: 13px;
+    padding: 8px 0;
+}
+
+.data-table {
+    width: auto;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 16px;
+}
+
+.data-table th {
+    text-align: left;
+    padding: 6px 10px;
+    background: #181825;
+    color: #a6adc8;
+    font-weight: 600;
+    border-bottom: 1px solid #313244;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+}
+
+/* When a section-nav is present, push sticky table headers below it and
+   give section headings enough scroll-margin to not be hidden behind it. */
+.has-section-nav .data-table th {
+    top: 37px;
+}
+
+.has-section-nav .view-subtitle {
+    scroll-margin-top: 45px;
+}
+
+.data-table td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #1e1e2e;
+    vertical-align: top;
+}
+
+.data-table tbody tr:nth-child(even) td { background: rgba(49, 50, 68, 0.4); }
+.data-table tbody tr:hover td { background: rgba(69, 71, 90, 0.5); }
+.data-table tbody tr.nav-row td { cursor: pointer; user-select: none; }
+
+.data-table .mono {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    white-space: nowrap;
+}
+
+.data-table .name-cell, .data-table .sym-name {
+    word-break: break-all;
+}
+
+.data-table .ndx-cell { white-space: nowrap; }
+
+.sym-version {
+    color: #6c7086;
+    font-size: 11px;
+    margin-left: 2px;
+}
+
+.ver-hidden {
+    color: #f38ba8;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* Right-align numeric columns in symbol table */
+.sym-right { text-align: right; }
+
+/* Ver# cell: number right-aligned, 'h' badge in a fixed slot outside */
+.ver-num-cell {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.ver-num-val {
+    flex: 1;
+    text-align: right;
+}
+
+.ver-hidden-slot {
+    width: 1.2em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Virtual scroll: nth-child striping is offset by spacer rows.
+   Disable it and use the explicit .vs-even class instead. */
+.symbol-virtual tbody tr:nth-child(even) td,
+.reloc-virtual tbody tr:nth-child(even) td {
+    background: transparent;
+}
+.symbol-virtual tbody tr.vs-even td,
+.reloc-virtual tbody tr.vs-even td {
+    background: rgba(49, 50, 68, 0.4);
+}
+
+.data-table .flags { color: #89b4fa; }
+.data-table .cell-dim { color: #7f849c; }
+
+/* VERNEED group header (library name) */
+.has-section-nav .ver-group-header {
+    scroll-margin-top: 45px;
+}
+
+.ver-group-header {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    margin-top: 12px;
+    background: #181825;
+    color: #89b4fa;
+    border-left: 2px solid #89b4fa;
+}
+
+.ver-group-table {
+    margin-bottom: 0;
+}
+
+.data-table tr.highlighted td { background: rgba(137, 180, 250, 0.25) !important; }
+
+.data-table .note-desc {
+    word-break: break-all;
+}
+
+.data-table .note-property-desc {
+    line-height: 1.6;
+}
+
+/* Info table (key-value pairs) for File Header view */
+.info-table {
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+.info-table td { padding: 4px 12px; vertical-align: top; }
+.info-table tr:hover td { background: rgba(69, 71, 90, 0.3); }
+.info-label { color: #a6adc8; white-space: nowrap; padding-right: 24px; }
+.info-value { font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace; color: #cdd6f4; }
+
+/* ===== ELF Tooltip ===== */
+
+.elf-tooltip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    background: #181825;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #cdd6f4;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    min-width: 160px;
+    max-width: 280px;
+}
+
+.elf-tooltip .tt-title {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #cba6f7;
+    margin-bottom: 6px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #313244;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.elf-tooltip .tt-index {
+    color: #89b4fa;
+    font-weight: 400;
+}
+
+.elf-tooltip table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.elf-tooltip .tt-key {
+    color: #a6adc8;
+    padding-right: 12px;
+    white-space: nowrap;
+    font-size: 11px;
+    padding-bottom: 2px;
+    vertical-align: top;
+}
+
+.elf-tooltip .tt-val {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    color: #cdd6f4;
+    font-size: 11px;
+    padding-bottom: 2px;
+    word-break: break-all;
+}
+
+.elf-tooltip .tt-sep {
+    border-top: 1px solid #313244;
+    margin: 6px 0;
+}
+
+/* ===== Right-click Context Menu ===== */
+
+.ctx-menu {
+    position: fixed;
+    z-index: 10000;
+    background: #1e1e2e;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 4px 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+    min-width: 160px;
+}
+
+.ctx-menu-item {
+    display: block;
+    width: 100%;
+    padding: 7px 14px;
+    background: none;
+    border: none;
+    color: #cdd6f4;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.ctx-menu-item:hover {
+    background: #313244;
+    color: #89b4fa;
+}
+
+/* ===== Version badge (header + welcome) ===== */
+
+.version-badge {
+    font-size: 11px;
+    color: #6c7086;
+    background: none;
+    border: 1px solid #313244;
+    border-radius: 4px;
+    padding: 2px 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    transition: color 0.1s, border-color 0.1s;
+}
+.version-badge:hover { color: #89b4fa; border-color: #89b4fa; }
+
+/* ===== About dialog ===== */
+
+.about-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.about-dialog {
+    background: #1e1e2e;
+    border: 1px solid #45475a;
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+    width: 340px;
+    overflow: hidden;
+}
+
+.about-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid #313244;
+    background: #181825;
+}
+
+.about-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #89b4fa;
+}
+
+.about-close {
+    background: none;
+    border: none;
+    color: #6c7086;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    border-radius: 4px;
+    line-height: 1;
+}
+.about-close:hover { background: #313244; color: #cdd6f4; }
+
+.about-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.about-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+}
+
+.about-table td { padding: 4px 0; vertical-align: top; }
+
+.about-key {
+    color: #a6adc8;
+    padding-right: 20px;
+    white-space: nowrap;
+    width: 90px;
+}
+
+.about-val { color: #cdd6f4; }
+
+.about-mono {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 12px;
+}
+
+.about-github {
+    display: inline-block;
+    font-size: 13px;
+    color: #89b4fa;
+    text-decoration: none;
+    padding: 6px 12px;
+    border: 1px solid #313244;
+    border-radius: 6px;
+    text-align: center;
+    transition: background 0.1s, border-color 0.1s;
+}
+.about-github:hover { background: #313244; border-color: #89b4fa; }
+
+/* ===== Hex Dump View ===== */
+
+/* Sticky header: contains title, meta info, and column header row. */
+.hex-dump-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #1e1e2e;
+    padding: 16px 16px 0;
+}
+
+.hex-dump-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: #cba6f7;
+    margin-bottom: 6px;
+}
+
+.hex-dump-meta {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 12px;
+    color: #a6adc8;
+    margin-bottom: 0;
+}
+
+.hex-dump-empty {
+    color: #6c7086;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+/* Column header row (inside the sticky area, same font as data rows). */
+.hex-dump-colheader {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #6c7086;
+    white-space: pre;
+    margin: 8px 0 0;
+    padding: 4px 0 6px;
+    border-bottom: 1px solid #45475a;
+    background: transparent;
+}
+
+/* Data rows. Padding-left matches the sticky div's padding-left for column alignment. */
+.hex-dump-pre {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #cdd6f4;
+    white-space: pre;
+    margin: 0;
+    padding: 8px 16px 16px;
+    overflow-x: auto;
+}

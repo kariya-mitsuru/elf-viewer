@@ -1,0 +1,3 @@
+# Mark Wails-generated bindings as generated code.
+# GitHub will collapse these in diffs and exclude them from language stats.
+frontend/wailsjs/** linguist-generated=true
