@@ -45,7 +45,7 @@ fmt:         ## Format source files with Prettier
 release:     ## Bump version and open a pull request to main  (VERSION=x.y.z required)
 	@[ -n "$(VERSION)" ] || { printf "Error: VERSION is required.\nUsage: make release VERSION=x.y.z\n"; exit 1; }
 	cd frontend && npm version "$(VERSION)" --no-git-tag-version
-	git add frontend/package.json
+	git add frontend/package.json frontend/package-lock.json
 	git commit -m "chore: bump version to $(VERSION)"
 	git push
 	gh pr create --title "chore: bump version to $(VERSION)" --body "" --base main
