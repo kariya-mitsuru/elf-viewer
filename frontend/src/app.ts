@@ -222,6 +222,7 @@ export class App {
           (elf.versionInfo.versionDefs.length === 0 && elf.versionInfo.versionNeeds.length === 0),
       },
       { id: "notes", label: "Notes", group: "Data", disabled: elf.notes.length === 0 },
+      { id: "security", label: "Security", group: "Views" },
       { id: "memory-map", label: "Memory Map", group: "Views", disabled: isObjFile },
       {
         id: "file-map",
@@ -273,6 +274,9 @@ export class App {
         break;
       case "notes":
         this.openNotesTab(elf);
+        break;
+      case "security":
+        this.openSecurityTab(elf);
         break;
     }
   }
@@ -753,6 +757,19 @@ export class App {
       closeable: true,
       render: (container) => {
         import("./views/NotesView.ts").then(({ renderNotes }) => renderNotes(container, elf));
+      },
+    });
+  }
+
+  private openSecurityTab(elf: ELFFile): void {
+    this.tabManager!.openTab({
+      id: "security",
+      label: "Security",
+      closeable: true,
+      render: (container) => {
+        import("./views/SecurityView.ts").then(({ renderSecurity }) =>
+          renderSecurity(container, elf)
+        );
       },
     });
   }
