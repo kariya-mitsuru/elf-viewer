@@ -286,7 +286,7 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
   let bucketsUpdater: ((term: string) => void) | null = null;
   let hashValuesUpdater: ((term: string) => void) | null = null;
 
-  createSubTabs(container, [
+  const subtabs = createSubTabs(container, [
     {
       label: `Bloom Filter (${ht.bloomSize})`,
       render: (p: HTMLElement) => renderBloomFilter(p, ht),
@@ -317,6 +317,20 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
       currentFilter = searchInput.value;
       bucketsUpdater?.(currentFilter);
       hashValuesUpdater?.(currentFilter);
+      if (currentFilter) {
+        const lower = currentFilter.toLowerCase();
+        const nBuckets = ht.buckets.filter(
+          (h) => h !== 0 && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
+        ).length;
+        const nHashVals = Array.from({ length: ht.hashValues.length }, (_, i) => i).filter((i) =>
+          (ht.symNames[ht.symoffset + i] ?? "").toLowerCase().includes(lower)
+        ).length;
+        subtabs.updateLabel(1, `Buckets (${nBuckets} / ${ht.nbuckets})`);
+        subtabs.updateLabel(2, `Hash Values (${nHashVals} / ${ht.hashValues.length})`);
+      } else {
+        subtabs.updateLabel(1, `Buckets (${ht.nbuckets})`);
+        subtabs.updateLabel(2, `Hash Values (${ht.hashValues.length})`);
+      }
     });
     nav.appendChild(searchInput);
   }

@@ -151,12 +151,17 @@ export interface SubTab {
   render: (panel: HTMLElement) => void;
 }
 
+export interface SubTabHandle {
+  /** Update the visible label text of tab i (e.g. to show a filtered count). */
+  updateLabel(i: number, label: string): void;
+}
+
 /**
  * Creates a section-nav tab switcher inside `container`.
  * Appends a nav bar with one button per tab, followed by one panel div per tab.
  * Only renders a panel's content the first time it becomes active (lazy rendering).
  */
-export function createSubTabs(container: HTMLElement, tabs: SubTab[]): void {
+export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHandle {
   container.classList.add("has-section-nav");
   const nav = document.createElement("nav");
   nav.className = "section-nav";
@@ -197,6 +202,12 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): void {
     btns[i].addEventListener("click", () => activate(i));
   }
   if (tabs.length > 0) activate(0);
+
+  return {
+    updateLabel(i: number, label: string): void {
+      if (btns[i]) btns[i].textContent = label;
+    },
+  };
 }
 
 // ─── ELF name conversion functions ───────────────────────────────────────────

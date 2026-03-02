@@ -205,7 +205,7 @@ function renderHashSection(container: HTMLElement, ht: HashTable): void {
   let bucketsUpdater: ((term: string) => void) | null = null;
   let chainsUpdater: ((term: string) => void) | null = null;
 
-  createSubTabs(container, [
+  const subtabs = createSubTabs(container, [
     {
       label: `Buckets (${ht.nbucket})`,
       render: (p: HTMLElement) => {
@@ -232,6 +232,20 @@ function renderHashSection(container: HTMLElement, ht: HashTable): void {
       currentFilter = searchInput.value;
       bucketsUpdater?.(currentFilter);
       chainsUpdater?.(currentFilter);
+      if (currentFilter) {
+        const lower = currentFilter.toLowerCase();
+        const nBuckets = ht.buckets.filter(
+          (h) => h !== STN_UNDEF && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
+        ).length;
+        const nChains = Array.from({ length: ht.nchain }, (_, i) => i).filter((i) =>
+          (ht.symNames[i] ?? "").toLowerCase().includes(lower)
+        ).length;
+        subtabs.updateLabel(0, `Buckets (${nBuckets} / ${ht.nbucket})`);
+        subtabs.updateLabel(1, `Chains (${nChains} / ${ht.nchain})`);
+      } else {
+        subtabs.updateLabel(0, `Buckets (${ht.nbucket})`);
+        subtabs.updateLabel(1, `Chains (${ht.nchain})`);
+      }
     });
     nav.appendChild(searchInput);
   }

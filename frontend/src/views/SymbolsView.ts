@@ -257,7 +257,7 @@ export function renderSymbols(container: HTMLElement, elf: ELFFile): void {
   // Sub-tab switcher (always, even for a single table — consistent appearance).
   // createSubTabs immediately renders the first panel (activate(0)), so
   // currentFilter must already be set before this call.
-  createSubTabs(
+  const subtabs = createSubTabs(
     container,
     tables.map((t, i) => ({
       label: `${t.name} (${t.syms.length})`,
@@ -278,7 +278,17 @@ export function renderSymbols(container: HTMLElement, elf: ELFFile): void {
     searchInput.setAttribute("aria-label", "Filter symbols by name");
     searchInput.addEventListener("input", () => {
       currentFilter = searchInput.value;
-      for (const fn of panelUpdaters) fn?.(currentFilter);
+      const lower = currentFilter.toLowerCase();
+      for (let i = 0; i < tables.length; i++) {
+        panelUpdaters[i]?.(currentFilter);
+        const t = tables[i];
+        if (currentFilter) {
+          const n = t.syms.filter((s) => s.name.toLowerCase().includes(lower)).length;
+          subtabs.updateLabel(i, `${t.name} (${n} / ${t.syms.length})`);
+        } else {
+          subtabs.updateLabel(i, `${t.name} (${t.syms.length})`);
+        }
+      }
     });
     nav.appendChild(searchInput);
   }
