@@ -143,8 +143,10 @@ function detectStackCanary(elf: ELFFile): SecurityFeature {
 
 function detectFortify(elf: ELFFile): SecurityFeature {
   const fortified = new Set<string>();
-  for (const s of elf.symbols) if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
-  for (const s of elf.dynSymbols) if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
+  for (const s of elf.symbols)
+    if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
+  for (const s of elf.dynSymbols)
+    if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
 
   const hasSymbols = elf.symbols.length > 0 || elf.dynSymbols.length > 0;
 
@@ -155,8 +157,7 @@ function detectFortify(elf: ELFFile): SecurityFeature {
     status = "enabled";
     const names = [...fortified].sort();
     detail =
-      names.slice(0, 5).join(", ") +
-      (names.length > 5 ? ` (+${names.length - 5} more)` : "");
+      names.slice(0, 5).join(", ") + (names.length > 5 ? ` (+${names.length - 5} more)` : "");
   } else if (!hasSymbols) {
     status = "unknown";
     detail = "No symbol table available";

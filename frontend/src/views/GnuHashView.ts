@@ -26,8 +26,7 @@ import { attachVirtualScroll } from "./virtualScroll.ts";
 /** elf_gnu_hash: the hash function used by DT_GNU_HASH sections. */
 function elfGnuHash(name: string): number {
   let h = 5381;
-  for (let i = 0; i < name.length; i++)
-    h = (Math.imul(h, 33) + name.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < name.length; i++) h = (Math.imul(h, 33) + name.charCodeAt(i)) >>> 0;
   return h;
 }
 
@@ -160,7 +159,10 @@ function renderBloomFilter(
       prevIdx = -1;
     }
     // Cancel pending scroll from previous keystroke.
-    if (scrollTimer) { clearTimeout(scrollTimer); scrollTimer = 0; }
+    if (scrollTimer) {
+      clearTimeout(scrollTimer);
+      scrollTimer = 0;
+    }
     pendingScrollIdx = -1;
     if (!term) {
       bloomInfo.style.display = "none";
