@@ -149,6 +149,7 @@ export const VIRTUAL_THRESHOLD = 500;
 export interface SubTab {
   label: string;
   render: (panel: HTMLElement) => void;
+  onActivate?: () => void;
 }
 
 export interface SubTabHandle {
@@ -196,6 +197,7 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHan
       rendered.add(i);
       tabs[i].render(panels[i]);
     }
+    tabs[i].onActivate?.();
   }
 
   for (let i = 0; i < tabs.length; i++) {

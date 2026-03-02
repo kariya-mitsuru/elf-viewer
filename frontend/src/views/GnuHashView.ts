@@ -54,10 +54,10 @@ function renderBloomFilter(
   container: HTMLElement,
   ht: GnuHashTable,
   initialTerm: string
-): (term: string) => void {
+): { update: (term: string) => void; scrollNow: () => void } {
   if (ht.bloom.length === 0) {
     appendEmptyMessage(container, "No bloom filter words");
-    return () => {};
+    return { update: () => {}, scrollNow: () => {} };
   }
 
   const hexWidth = ht.bloomWordSize === 8 ? 16 : 8;
@@ -112,6 +112,45 @@ function renderBloomFilter(
   container.appendChild(bloomInfo);
 
   let prevIdx = -1;
+  let scrollTimer = 0;
+  let pendingScrollIdx = -1;
+
+  // Scrolls the highlighted row into view, accounting for sticky section-nav + th.
+  // Only scrolls when the row is outside the visible area (up or down).
+  // If the container is hidden (display:none via tab switching), stores the index
+  // and returns false so the caller can retry on next tab activation.
+  function performScroll(wordIdx: number): boolean {
+    if (container.offsetParent === null) {
+      pendingScrollIdx = wordIdx;
+      return false;
+    }
+    pendingScrollIdx = -1;
+    const row = rows[wordIdx];
+    let sc: Element | null = row.parentElement;
+    while (sc && sc !== document.body) {
+      const ov = getComputedStyle(sc).overflowY;
+      if (ov === "auto" || ov === "scroll") break;
+      sc = sc.parentElement;
+    }
+    if (!sc) return true;
+    const scRect = sc.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    // thead itself is not sticky; only th children are (position:sticky, top:37px).
+    // Using th.getBoundingClientRect().bottom gives the true visible boundary.
+    const firstTh = table.tHead?.querySelector<HTMLElement>("th");
+    const stickyTop = firstTh ? firstTh.getBoundingClientRect().bottom : scRect.top;
+    if (rowRect.top < stickyTop) {
+      sc.scrollBy({ top: rowRect.top - stickyTop, behavior: "smooth" });
+    } else if (rowRect.bottom > scRect.bottom) {
+      sc.scrollBy({ top: rowRect.bottom - scRect.bottom, behavior: "smooth" });
+    }
+    return true;
+  }
+
+  // Called by the tab's onActivate hook to execute any deferred scroll.
+  function scrollNow(): void {
+    if (pendingScrollIdx >= 0) performScroll(pendingScrollIdx);
+  }
 
   function applyHighlight(term: string): void {
     // Clear previous highlight.
@@ -120,6 +159,9 @@ function renderBloomFilter(
       bitCells[prevIdx].innerHTML = buildBitPatternHtml(ht.bloom[prevIdx], bitWidth, new Set());
       prevIdx = -1;
     }
+    // Cancel pending scroll from previous keystroke.
+    if (scrollTimer) { clearTimeout(scrollTimer); scrollTimer = 0; }
+    pendingScrollIdx = -1;
     if (!term) {
       bloomInfo.style.display = "none";
       return;
@@ -144,10 +186,19 @@ function renderBloomFilter(
     bitCells[wordIdx].innerHTML = buildBitPatternHtml(word, bitWidth, new Set([bit1, bit2]));
     bloomInfo.textContent += isPositive ? " → possibly present" : " → definitely absent";
     prevIdx = wordIdx;
+
+    // Scroll 300 ms after typing stops (bi-directional: up or down as needed).
+    // The timer is cancelled on each keystroke, so no scroll occurs while actively
+    // typing. If the tab is hidden when the timer fires, performScroll() stores a
+    // pending index; scrollNow() will execute it on the next tab activation.
+    scrollTimer = window.setTimeout(() => {
+      scrollTimer = 0;
+      performScroll(wordIdx);
+    }, 300);
   }
 
   applyHighlight(initialTerm);
-  return applyHighlight;
+  return { update: applyHighlight, scrollNow };
 }
 
 // ─── Buckets tab ─────────────────────────────────────────────────────────────
@@ -363,6 +414,7 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
   // Shared filter state across all sub-tabs.
   let currentFilter = "";
   let bloomFilterUpdater: ((term: string) => void) | null = null;
+  let bloomScrollNow: (() => void) | null = null;
   let bucketsUpdater: ((term: string) => void) | null = null;
   let hashValuesUpdater: ((term: string) => void) | null = null;
 
@@ -370,8 +422,11 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
     {
       label: `Bloom Filter (${ht.bloomSize})`,
       render: (p: HTMLElement) => {
-        bloomFilterUpdater = renderBloomFilter(p, ht, currentFilter);
+        const handle = renderBloomFilter(p, ht, currentFilter);
+        bloomFilterUpdater = handle.update;
+        bloomScrollNow = handle.scrollNow;
       },
+      onActivate: () => bloomScrollNow?.(),
     },
     {
       label: `Buckets (${ht.nbuckets})`,
@@ -397,7 +452,7 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
     searchInput.setAttribute("aria-label", "Filter symbols by name");
     searchInput.addEventListener("input", () => {
       currentFilter = searchInput.value;
-      bloomFilterUpdater?.(currentFilter);
+      bloomFilterUpdater?.(currentFilter); // updates highlight + starts 300ms timer
       bucketsUpdater?.(currentFilter);
       hashValuesUpdater?.(currentFilter);
       if (currentFilter) {
