@@ -10,9 +10,9 @@ import {
   DynTag,
   PF_X,
   DF_BIND_NOW,
-  DF_1_PIE,
   DF_1_NOW,
 } from "../parser/types.ts";
+import { isPIE } from "./viewUtils.ts";
 
 type SecurityStatus = "enabled" | "partial" | "disabled" | "unknown";
 
@@ -24,11 +24,9 @@ interface SecurityFeature {
 }
 
 function detectPIE(elf: ELFFile): SecurityFeature {
-  const isDyn = elf.header.type === ELFType.Dyn;
   const isExec = elf.header.type === ELFType.Exec;
-  const flags1Entry = elf.dynamicEntries.find((e) => e.tag === DynTag.Flags1);
-  const hasPIEFlag =
-    flags1Entry !== undefined && (flags1Entry.value & BigInt(DF_1_PIE)) !== 0n;
+  const isDyn = elf.header.type === ELFType.Dyn;
+  const pie = isPIE(elf);
 
   let status: SecurityStatus;
   let detail: string;
@@ -36,13 +34,12 @@ function detectPIE(elf: ELFFile): SecurityFeature {
   if (isExec) {
     status = "disabled";
     detail = "ET_EXEC — fixed-address executable";
-  } else if (isDyn && hasPIEFlag) {
+  } else if (pie) {
     status = "enabled";
     detail = "ET_DYN + DF_1_PIE";
   } else if (isDyn) {
-    // ET_DYN without DF_1_PIE: could be a shared library or a PIE built without the flag
     status = "enabled";
-    detail = "ET_DYN (PIE or shared library)";
+    detail = "ET_DYN (no DF_1_PIE — may be a shared library)";
   } else {
     status = "unknown";
     detail = `ELF type: 0x${(elf.header.type as number).toString(16)}`;

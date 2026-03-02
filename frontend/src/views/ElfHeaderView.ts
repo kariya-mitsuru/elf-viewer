@@ -4,13 +4,14 @@
 // ELF Header view: renders the ELF header in a readelf -h style table.
 
 import { type ELFFile, ELFClass, ELFData, ELFType, ELFOSABI, ELFMachine } from "../parser/types.ts";
+import { isPIE } from "./viewUtils.ts";
 
-function className(type: ELFType): string {
-  switch (type) {
+function elfTypeName(elf: ELFFile): string {
+  switch (elf.header.type) {
     case ELFType.Exec:
       return "ET_EXEC (Executable file)";
     case ELFType.Dyn:
-      return "ET_DYN (Shared object file)";
+      return isPIE(elf) ? "ET_DYN (PIE file)" : "ET_DYN (Shared object file)";
     case ELFType.Rel:
       return "ET_REL (Relocatable file)";
     case ELFType.Core:
@@ -18,7 +19,7 @@ function className(type: ELFType): string {
     case ELFType.None:
       return "ET_NONE (No file type)";
     default:
-      return `0x${(type as number).toString(16)} (Unknown)`;
+      return `0x${(elf.header.type as number).toString(16)} (Unknown)`;
   }
 }
 
@@ -102,7 +103,7 @@ export function renderElfHeader(container: HTMLElement, elf: ELFFile): void {
     ["Version", `${h.version} (current)`],
     ["OS/ABI", osabiName(h.osabi)],
     ["ABI Version", dec(h.abiVersion)],
-    ["Type", className(h.type)],
+    ["Type", elfTypeName(elf)],
     ["Machine", machineName(h.machine)],
     ["Version (ELF)", hex(1)],
     ["Entry point address", hex(h.entryPoint)],

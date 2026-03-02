@@ -1024,6 +1024,22 @@ button.section-nav-link:hover {
 
 /* ===== Security View ===== */
 
+.security-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.security-table th:nth-child(1),
+.security-table td:nth-child(1) { width: 120px; }
+
+.security-table th:nth-child(2),
+.security-table td:nth-child(2) { width: 80px; }
+
+.security-table th:nth-child(3),
+.security-table td:nth-child(3) { width: 280px; }
+
+/* 4th column (description) takes the remaining width */
+
 .security-table .sec-feature-name {
     font-weight: 600;
     white-space: nowrap;
@@ -1031,15 +1047,15 @@ button.section-nav-link:hover {
 }
 
 .security-table .sec-detail {
-    max-width: 320px;
+    white-space: normal;
     word-break: break-word;
+    overflow-wrap: break-word;
     color: #a6adc8;
 }
 
 .security-table .sec-desc {
     color: #7f849c;
     font-size: 11px;
-    min-width: 200px;
 }
 
 .sec-badge {

@@ -5,7 +5,9 @@
 // Functions and constants used across multiple view modules.
 
 import {
+  type ELFFile,
   type VersionInfo,
+  ELFType,
   SHType,
   PHType,
   DynTag,
@@ -19,6 +21,7 @@ import {
   SHF_STRINGS,
   SHF_GROUP,
   SHF_TLS,
+  DF_1_PIE,
 } from "../parser/types.ts";
 
 // ─── Navigation target ────────────────────────────────────────────────────────
@@ -446,4 +449,14 @@ export function phNavTarget(t: PHType): NavTarget | null {
     default:
       return null;
   }
+}
+
+// ─── PIE detection ────────────────────────────────────────────────────────────
+
+/** Returns true if the ELF is a PIE executable (ET_DYN with DF_1_PIE set). */
+export function isPIE(elf: ELFFile): boolean {
+  if (elf.header.type !== ELFType.Dyn) return false;
+  return elf.dynamicEntries.some(
+    (e) => e.tag === DynTag.Flags1 && (e.value & BigInt(DF_1_PIE)) !== 0n
+  );
 }
