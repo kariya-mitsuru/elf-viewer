@@ -14,6 +14,37 @@ Both modes run the same TypeScript ELF parser entirely on the client side.
 - **ELF32 and ELF64, little-endian and big-endian** — broad architecture coverage
 - **Web version runs entirely in the browser** — no installation or server required; files are processed locally and never uploaded
 
+![Memory map view](docs/screenshot-memmap.png)
+
+## Usage
+
+### Web app
+
+No installation required. Open the web app in your browser:
+
+**[https://kariya-mitsuru.github.io/elf-viewer/](https://kariya-mitsuru.github.io/elf-viewer/)**
+
+Alternatively, download the standalone HTML file (e.g. `elf-viewer-v0.1.3.html`) from the [Releases page](https://github.com/kariya-mitsuru/elf-viewer/releases) and open it directly in your browser — no server needed.
+
+### Desktop app
+
+Download the latest Linux binary from the [Releases page](https://github.com/kariya-mitsuru/elf-viewer/releases) using `curl`:
+
+```sh
+VERSION=x.y.z  # replace with the actual version
+# amd64
+curl -L -o elf-viewer "https://github.com/kariya-mitsuru/elf-viewer/releases/download/v${VERSION}/elf-viewer-v${VERSION}-linux-amd64"
+# arm64
+curl -L -o elf-viewer "https://github.com/kariya-mitsuru/elf-viewer/releases/download/v${VERSION}/elf-viewer-v${VERSION}-linux-arm64"
+```
+
+```sh
+chmod +x elf-viewer
+./elf-viewer /path/to/binary
+```
+
+---
+
 ## Limitations
 
 - Symbol demangling is not supported — C++ mangled names are displayed as-is
