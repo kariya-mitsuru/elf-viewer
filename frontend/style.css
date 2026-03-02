@@ -436,6 +436,25 @@ body {
     flex-shrink: 0;
 }
 
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+    background-color: #1e1e2e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #45475a;
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #585b70;
+}
+
+::-webkit-scrollbar-corner {
+    background-color: #1e1e2e;
+}
+
 .tab {
     display: flex;
     align-items: center;
