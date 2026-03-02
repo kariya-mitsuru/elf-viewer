@@ -18,14 +18,19 @@
 
 const BUFFER = 30; // extra rows rendered above/below the visible area
 
+export interface VirtualScrollHandle {
+  /** Replace the data source and re-render from the top. */
+  update(newCount: number, newBuildRow: (i: number) => HTMLTableRowElement): void;
+}
+
 export function attachVirtualScroll(
   table: HTMLTableElement,
   count: number,
   buildRow: (i: number) => HTMLTableRowElement,
   isVisible?: () => boolean
-): void {
+): VirtualScrollHandle {
   const tbody = table.tBodies[0];
-  if (!tbody) return;
+  if (!tbody) return { update() {} };
 
   const topSpacer = document.createElement("tr");
   const botSpacer = document.createElement("tr");
@@ -45,7 +50,10 @@ export function attachVirtualScroll(
   tbody.removeChild(probe);
   if (measured > 0) ROW_H = measured;
 
-  botSpacer.style.height = `${count * ROW_H}px`;
+  // Mutable state so update() can replace the data source.
+  const state = { count, buildRow };
+
+  botSpacer.style.height = `${state.count * ROW_H}px`;
 
   let rendStart = 0;
   let rendEnd = 0;
@@ -79,7 +87,7 @@ export function attachVirtualScroll(
     const visStart = Math.max(0, scrolledPast);
     const visEnd = visStart + sc.clientHeight;
 
-    const newEnd = Math.min(count, Math.ceil(visEnd / ROW_H) + BUFFER);
+    const newEnd = Math.min(state.count, Math.ceil(visEnd / ROW_H) + BUFFER);
     const newStart = Math.min(newEnd, Math.max(0, Math.floor(visStart / ROW_H) - BUFFER));
     if (newStart === rendStart && newEnd === rendEnd) return;
 
@@ -88,14 +96,14 @@ export function attachVirtualScroll(
 
     const frag = document.createDocumentFragment();
     for (let i = newStart; i < newEnd; i++) {
-      const tr = buildRow(i);
+      const tr = state.buildRow(i);
       frag.appendChild(tr);
       renderedRows.push(tr);
     }
     tbody.insertBefore(frag, botSpacer);
 
     topSpacer.style.height = `${newStart * ROW_H}px`;
-    botSpacer.style.height = `${(count - newEnd) * ROW_H}px`;
+    botSpacer.style.height = `${(state.count - newEnd) * ROW_H}px`;
     rendStart = newStart;
     rendEnd = newEnd;
   }
@@ -125,4 +133,23 @@ export function attachVirtualScroll(
       });
     }
   });
+
+  return {
+    update(newCount: number, newBuildRow: (i: number) => HTMLTableRowElement): void {
+      state.count = newCount;
+      state.buildRow = newBuildRow;
+      // Clear rendered rows and reset position before re-rendering.
+      for (const tr of renderedRows) tbody.removeChild(tr);
+      renderedRows = [];
+      rendStart = 0;
+      rendEnd = 0;
+      botSpacer.style.height = `${newCount * ROW_H}px`;
+      // Scroll to top so the re-render makes sense visually.
+      // Skip when hidden: the cached scroll container is shared with the visible
+      // tab, so resetting scrollTop here would jump the currently-shown content.
+      const sc = getScrollEl();
+      if (sc && (!isVisible || isVisible())) sc.scrollTop = 0;
+      render();
+    },
+  };
 }

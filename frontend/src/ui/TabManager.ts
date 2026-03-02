@@ -137,6 +137,10 @@ export class TabManager {
 
       this.tabBar.appendChild(tabEl);
     }
+    this.tabBar.querySelector<HTMLElement>(".tab.active")?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
   }
 
   hasTab(id: string): boolean {

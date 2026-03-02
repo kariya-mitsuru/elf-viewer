@@ -5,7 +5,9 @@
 // Functions and constants used across multiple view modules.
 
 import {
+  type ELFFile,
   type VersionInfo,
+  ELFType,
   SHType,
   PHType,
   DynTag,
@@ -19,6 +21,7 @@ import {
   SHF_STRINGS,
   SHF_GROUP,
   SHF_TLS,
+  DF_1_PIE,
 } from "../parser/types.ts";
 
 // ─── Navigation target ────────────────────────────────────────────────────────
@@ -149,6 +152,12 @@ export const VIRTUAL_THRESHOLD = 500;
 export interface SubTab {
   label: string;
   render: (panel: HTMLElement) => void;
+  onActivate?: () => void;
+}
+
+export interface SubTabHandle {
+  /** Update the visible label text of tab i (e.g. to show a filtered count). */
+  updateLabel(i: number, label: string): void;
 }
 
 /**
@@ -156,7 +165,7 @@ export interface SubTab {
  * Appends a nav bar with one button per tab, followed by one panel div per tab.
  * Only renders a panel's content the first time it becomes active (lazy rendering).
  */
-export function createSubTabs(container: HTMLElement, tabs: SubTab[]): void {
+export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHandle {
   container.classList.add("has-section-nav");
   const nav = document.createElement("nav");
   nav.className = "section-nav";
@@ -191,12 +200,19 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): void {
       rendered.add(i);
       tabs[i].render(panels[i]);
     }
+    tabs[i].onActivate?.();
   }
 
   for (let i = 0; i < tabs.length; i++) {
     btns[i].addEventListener("click", () => activate(i));
   }
   if (tabs.length > 0) activate(0);
+
+  return {
+    updateLabel(i: number, label: string): void {
+      if (btns[i]) btns[i].textContent = label;
+    },
+  };
 }
 
 // ─── ELF name conversion functions ───────────────────────────────────────────
@@ -433,4 +449,14 @@ export function phNavTarget(t: PHType): NavTarget | null {
     default:
       return null;
   }
+}
+
+// ─── PIE detection ────────────────────────────────────────────────────────────
+
+/** Returns true if the ELF is a PIE executable (ET_DYN with DF_1_PIE set). */
+export function isPIE(elf: ELFFile): boolean {
+  if (elf.header.type !== ELFType.Dyn) return false;
+  return elf.dynamicEntries.some(
+    (e) => e.tag === DynTag.Flags1 && (e.value & BigInt(DF_1_PIE)) !== 0n
+  );
 }
