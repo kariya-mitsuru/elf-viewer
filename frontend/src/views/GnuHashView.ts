@@ -13,19 +13,51 @@
 //   u32[nsyms]         — hash value chain (bit 0 = end-of-chain marker)
 //
 // Sub-tabs: Bloom Filter | Buckets | Hash Values
-// A shared search box in the sub-nav filters Buckets and Hash Values by symbol name.
-// Bloom Filter has no symbol names and is unaffected by the search.
+// A shared search box in the sub-nav:
+//   - Bloom Filter: highlights the bloom word and the two check-bits for the search term
+//   - Buckets / Hash Values: filter rows by symbol name
 
 import { type ELFFile, type GnuHashTable } from "../parser/types.ts";
 import { VIRTUAL_THRESHOLD, createSubTabs, appendEmptyMessage } from "./viewUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 
+// ─── GNU hash helpers ─────────────────────────────────────────────────────────
+
+/** elf_gnu_hash: the hash function used by DT_GNU_HASH sections. */
+function elfGnuHash(name: string): number {
+  let h = 5381;
+  for (let i = 0; i < name.length; i++)
+    h = (Math.imul(h, 33) + name.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/**
+ * Renders a bloom filter word as a grouped bit pattern (8 bits per group).
+ * Bits in `hitBits` (positions counted from LSB = 0) are wrapped in a highlight span.
+ */
+function buildBitPatternHtml(val: bigint, bitWidth: number, hitBits: Set<number>): string {
+  const binStr = val.toString(2).padStart(bitWidth, "0");
+  // binStr[j] = bit at position (bitWidth - 1 - j) from LSB.
+  let html = "";
+  for (let j = 0; j < bitWidth; j++) {
+    if (j > 0 && j % 8 === 0) html += " ";
+    const bitPos = bitWidth - 1 - j;
+    const char = binStr[j];
+    html += hitBits.has(bitPos) ? `<span class="bloom-bit-hit">${char}</span>` : char;
+  }
+  return html;
+}
+
 // ─── Bloom Filter tab ─────────────────────────────────────────────────────────
 
-function renderBloomFilter(container: HTMLElement, ht: GnuHashTable): void {
+function renderBloomFilter(
+  container: HTMLElement,
+  ht: GnuHashTable,
+  initialTerm: string
+): (term: string) => void {
   if (ht.bloom.length === 0) {
     appendEmptyMessage(container, "No bloom filter words");
-    return;
+    return () => {};
   }
 
   const hexWidth = ht.bloomWordSize === 8 ? 16 : 8;
@@ -42,32 +74,80 @@ function renderBloomFilter(container: HTMLElement, ht: GnuHashTable): void {
     </tr></thead>
   `;
   const tbody = document.createElement("tbody");
+
+  // Per-row references for efficient highlight updates.
+  const rows: HTMLTableRowElement[] = [];
+  const bitCells: HTMLTableCellElement[] = [];
+
   for (let i = 0; i < ht.bloom.length; i++) {
     const val = ht.bloom[i];
     const hex = val.toString(16).padStart(hexWidth, "0");
-    // Count set bits
     let bits = val;
     let setBits = 0;
     while (bits > 0n) {
       if (bits & 1n) setBits++;
       bits >>= 1n;
     }
-    // Visual bit pattern (64-bit groups of 8)
-    const binStr = val.toString(2).padStart(bitWidth, "0");
-    const groups: string[] = [];
-    for (let j = 0; j < bitWidth; j += 8) groups.push(binStr.slice(j, j + 8));
-    const bitPattern = groups.join(" ");
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td class="mono sym-right">${i}</td>
       <td class="mono sym-right">0x${hex}</td>
       <td class="mono sym-right">${setBits} / ${bitWidth}</td>
-      <td class="mono bloom-bits">${bitPattern}</td>
     `;
+    const bitTd = document.createElement("td");
+    bitTd.className = "mono bloom-bits";
+    bitTd.innerHTML = buildBitPatternHtml(val, bitWidth, new Set());
+    tr.appendChild(bitTd);
     tbody.appendChild(tr);
+    rows.push(tr);
+    bitCells.push(bitTd);
   }
   table.appendChild(tbody);
   container.appendChild(table);
+
+  // Info line: appears when a search term is active.
+  const bloomInfo = document.createElement("p");
+  bloomInfo.className = "bloom-info view-note";
+  bloomInfo.style.display = "none";
+  container.appendChild(bloomInfo);
+
+  let prevIdx = -1;
+
+  function applyHighlight(term: string): void {
+    // Clear previous highlight.
+    if (prevIdx >= 0) {
+      rows[prevIdx].classList.remove("bloom-hit-row", "bloom-positive", "bloom-negative");
+      bitCells[prevIdx].innerHTML = buildBitPatternHtml(ht.bloom[prevIdx], bitWidth, new Set());
+      prevIdx = -1;
+    }
+    if (!term) {
+      bloomInfo.style.display = "none";
+      return;
+    }
+
+    const h = elfGnuHash(term);
+    const wordIdx = Math.floor(h / bitWidth) % ht.bloomSize;
+    const bit1 = h % bitWidth;
+    const bit2 = (h >>> ht.bloomShift) % bitWidth;
+
+    bloomInfo.style.display = "";
+    bloomInfo.textContent = `"${term}" → hash 0x${h.toString(16)}, word ${wordIdx}, bits ${bit1} & ${bit2}`;
+
+    if (!rows[wordIdx]) return;
+
+    const word = ht.bloom[wordIdx];
+    const bit1Set = (word >> BigInt(bit1)) & 1n;
+    const bit2Set = (word >> BigInt(bit2)) & 1n;
+    const isPositive = bit1Set === 1n && bit2Set === 1n;
+
+    rows[wordIdx].classList.add("bloom-hit-row", isPositive ? "bloom-positive" : "bloom-negative");
+    bitCells[wordIdx].innerHTML = buildBitPatternHtml(word, bitWidth, new Set([bit1, bit2]));
+    bloomInfo.textContent += isPositive ? " → possibly present" : " → definitely absent";
+    prevIdx = wordIdx;
+  }
+
+  applyHighlight(initialTerm);
+  return applyHighlight;
 }
 
 // ─── Buckets tab ─────────────────────────────────────────────────────────────
@@ -280,16 +360,18 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
   `;
   container.appendChild(stats);
 
-  // Shared filter state across Buckets / Hash Values sub-tabs.
-  // Bloom Filter has no symbol names and is not connected to the search.
+  // Shared filter state across all sub-tabs.
   let currentFilter = "";
+  let bloomFilterUpdater: ((term: string) => void) | null = null;
   let bucketsUpdater: ((term: string) => void) | null = null;
   let hashValuesUpdater: ((term: string) => void) | null = null;
 
   const subtabs = createSubTabs(container, [
     {
       label: `Bloom Filter (${ht.bloomSize})`,
-      render: (p: HTMLElement) => renderBloomFilter(p, ht),
+      render: (p: HTMLElement) => {
+        bloomFilterUpdater = renderBloomFilter(p, ht, currentFilter);
+      },
     },
     {
       label: `Buckets (${ht.nbuckets})`,
@@ -315,6 +397,7 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
     searchInput.setAttribute("aria-label", "Filter symbols by name");
     searchInput.addEventListener("input", () => {
       currentFilter = searchInput.value;
+      bloomFilterUpdater?.(currentFilter);
       bucketsUpdater?.(currentFilter);
       hashValuesUpdater?.(currentFilter);
       if (currentFilter) {

@@ -993,3 +993,31 @@ button.section-nav-link:hover {
     padding: 8px 16px 16px;
     overflow-x: auto;
 }
+
+/* ===== Bloom filter highlight ===== */
+
+/* Row highlight: green = both bits set (possibly present),
+                 red   = at least one bit unset (definitely absent) */
+.bloom-hit-row.bloom-positive td {
+    background: rgba(166, 227, 161, 0.10);
+}
+.bloom-hit-row.bloom-negative td {
+    background: rgba(243, 139, 168, 0.10);
+}
+
+/* Individual bit highlight within the bit pattern cell */
+.bloom-bit-hit {
+    background: #f9e2af;
+    color: #1e1e2e;
+    border-radius: 2px;
+    font-weight: bold;
+    padding: 0 1px;
+}
+
+/* Info line shown below the bloom filter table during search */
+.bloom-info {
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+    font-size: 12px;
+    color: #a6adc8;
+    margin-top: 6px;
+}
