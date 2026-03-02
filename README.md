@@ -10,6 +10,7 @@ Both modes run the same TypeScript ELF parser entirely on the client side.
 ## Features
 
 - **Graphical memory map** — visualizes segment and section layout; click any region to navigate to the corresponding section or program header entry
+- **Security summary** — shows PIE, RELRO (partial/full), NX, stack canary, and FORTIFY_SOURCE status at a glance
 - **Works without section headers** — falls back to program headers and the dynamic segment to display symbol tables, relocations, and dynamic entries
 - **ELF32 and ELF64, little-endian and big-endian** — broad architecture coverage
 - **Web version runs entirely in the browser** — no installation or server required; files are processed locally and never uploaded
@@ -184,6 +185,7 @@ main.go                       # Wails entry point + Go embed
 go.mod / go.sum               # Go module definition and lock
 wails.json                    # Wails project configuration
 Makefile
+CLAUDE.md                     # Project notes for Claude Code
 
 frontend/index.html           # HTML entry point
 frontend/style.css
@@ -225,6 +227,7 @@ frontend/.vite/               # Vite dependency pre-bundling cache
 ├── go.mod / go.sum
 ├── wails.json
 ├── Makefile
+├── CLAUDE.md                 # Project notes for Claude Code
 └── frontend/
     ├── index.html
     ├── style.css
@@ -253,6 +256,7 @@ frontend/.vite/               # Vite dependency pre-bundling cache
     │   │   ├── GnuHashView.ts        # SHT_GNU_HASH view
     │   │   ├── VersionsView.ts       # GNU version info view
     │   │   ├── HexDumpView.ts        # Section hex dump view
+    │   │   ├── SecurityView.ts       # Binary hardening checks (PIE, RELRO, NX, etc.)
     │   │   ├── MemoryMapView.ts
     │   │   ├── layout.ts             # ELFFile → MemoryMapView intermediate representation
     │   │   ├── viewUtils.ts          # Shared view utilities
