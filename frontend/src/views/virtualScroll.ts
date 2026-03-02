@@ -145,8 +145,10 @@ export function attachVirtualScroll(
       rendEnd = 0;
       botSpacer.style.height = `${newCount * ROW_H}px`;
       // Scroll to top so the re-render makes sense visually.
+      // Skip when hidden: the cached scroll container is shared with the visible
+      // tab, so resetting scrollTop here would jump the currently-shown content.
       const sc = getScrollEl();
-      if (sc) sc.scrollTop = 0;
+      if (sc && (!isVisible || isVisible())) sc.scrollTop = 0;
       render();
     },
   };
