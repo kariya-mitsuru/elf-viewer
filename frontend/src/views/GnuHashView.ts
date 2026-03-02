@@ -13,6 +13,8 @@
 //   u32[nsyms]         — hash value chain (bit 0 = end-of-chain marker)
 //
 // Sub-tabs: Bloom Filter | Buckets | Hash Values
+// A shared search box in the sub-nav filters Buckets and Hash Values by symbol name.
+// Bloom Filter has no symbol names and is unaffected by the search.
 
 import { type ELFFile, type GnuHashTable } from "../parser/types.ts";
 import { VIRTUAL_THRESHOLD, createSubTabs, appendEmptyMessage } from "./viewUtils.ts";
@@ -70,7 +72,14 @@ function renderBloomFilter(container: HTMLElement, ht: GnuHashTable): void {
 
 // ─── Buckets tab ─────────────────────────────────────────────────────────────
 
-function renderBuckets(container: HTMLElement, ht: GnuHashTable): void {
+// Returns a setFilter function.
+// When filtering: empty buckets are hidden; only non-empty buckets with a matching
+// head symbol name are shown.
+function renderBuckets(
+  container: HTMLElement,
+  ht: GnuHashTable,
+  initialFilter: string
+): (term: string) => void {
   const table = document.createElement("table");
   table.className = "data-table";
   table.innerHTML = `
@@ -81,27 +90,50 @@ function renderBuckets(container: HTMLElement, ht: GnuHashTable): void {
     </tr></thead>
   `;
   const tbody = document.createElement("tbody");
-  for (let i = 0; i < ht.buckets.length; i++) {
-    const head = ht.buckets[i];
-    const tr = document.createElement("tr");
-    if (head === 0) {
-      tr.innerHTML = `
-        <td class="mono sym-right">${i}</td>
-        <td class="mono sym-right empty-bucket">—</td>
-        <td></td>
-      `;
-    } else {
-      const name = ht.symNames[head] ?? "";
-      tr.innerHTML = `
-        <td class="mono sym-right">${i}</td>
-        <td class="mono sym-right">${head}</td>
-        <td class="mono">${name}</td>
-      `;
-    }
-    tbody.appendChild(tr);
-  }
   table.appendChild(tbody);
   container.appendChild(table);
+
+  const noResultMsg = document.createElement("p");
+  noResultMsg.className = "empty-msg search-no-result";
+  noResultMsg.textContent = "No matching symbols";
+  noResultMsg.style.display = "none";
+  container.appendChild(noResultMsg);
+
+  function buildRows(term: string): void {
+    tbody.innerHTML = "";
+    const lower = term.toLowerCase();
+    let count = 0;
+    for (let i = 0; i < ht.buckets.length; i++) {
+      const head = ht.buckets[i];
+      if (head === 0) {
+        if (!term) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="mono sym-right">${i}</td>
+            <td class="mono sym-right empty-bucket">—</td>
+            <td></td>
+          `;
+          tbody.appendChild(tr);
+          count++;
+        }
+      } else {
+        const name = ht.symNames[head] ?? "";
+        if (term && !name.toLowerCase().includes(lower)) continue;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono sym-right">${i}</td>
+          <td class="mono sym-right">${head}</td>
+          <td class="mono">${name}</td>
+        `;
+        tbody.appendChild(tr);
+        count++;
+      }
+    }
+    noResultMsg.style.display = count === 0 ? "" : "none";
+  }
+
+  buildRows(initialFilter);
+  return buildRows;
 }
 
 // ─── Hash Values tab ─────────────────────────────────────────────────────────
@@ -145,44 +177,28 @@ function buildHashValueRow(
   return tr;
 }
 
-function renderVirtualHashValues(container: HTMLElement, ht: GnuHashTable): void {
-  const symToBucket = buildSymToBucket(ht);
-  const table = document.createElement("table");
-  table.className = "data-table hashvals-virtual";
-  table.innerHTML = `
-    <thead><tr>
-      <th class="sym-right">Sym #</th>
-      <th>Symbol Name</th>
-      <th class="sym-right">Hash Value</th>
-      <th class="sym-right">Bucket #</th>
-      <th class="sym-right">End of Chain</th>
-    </tr></thead>
-    <tbody></tbody>
-  `;
-  container.appendChild(table);
-  attachVirtualScroll(
-    table,
-    ht.hashValues.length,
-    (i) => buildHashValueRow(i, ht, symToBucket),
-    () => container.style.display !== "none"
-  );
-}
-
-function renderHashValues(container: HTMLElement, ht: GnuHashTable): void {
+// Returns a setFilter function. Uses virtual scroll when hashValues.length > VIRTUAL_THRESHOLD.
+function renderHashValues(
+  container: HTMLElement,
+  ht: GnuHashTable,
+  initialFilter: string
+): (term: string) => void {
   if (ht.hashValues.length === 0) {
     appendEmptyMessage(container, "No hashed symbols");
-    return;
-  }
-
-  if (ht.hashValues.length > VIRTUAL_THRESHOLD) {
-    renderVirtualHashValues(container, ht);
-    return;
+    return () => {};
   }
 
   const symToBucket = buildSymToBucket(ht);
-  const table = document.createElement("table");
-  table.className = "data-table";
-  table.innerHTML = `
+
+  function getFilteredIndices(term: string): number[] {
+    if (!term) return Array.from({ length: ht.hashValues.length }, (_, i) => i);
+    const lower = term.toLowerCase();
+    return Array.from({ length: ht.hashValues.length }, (_, i) => i).filter((i) =>
+      (ht.symNames[ht.symoffset + i] ?? "").toLowerCase().includes(lower)
+    );
+  }
+
+  const thead = `
     <thead><tr>
       <th class="sym-right">Sym #</th>
       <th>Symbol Name</th>
@@ -191,12 +207,53 @@ function renderHashValues(container: HTMLElement, ht: GnuHashTable): void {
       <th class="sym-right">End of Chain</th>
     </tr></thead>
   `;
-  const tbody = document.createElement("tbody");
-  for (let i = 0; i < ht.hashValues.length; i++) {
-    tbody.appendChild(buildHashValueRow(i, ht, symToBucket));
+  const noResultMsg = document.createElement("p");
+  noResultMsg.className = "empty-msg search-no-result";
+  noResultMsg.textContent = "No matching symbols";
+  noResultMsg.style.display = "none";
+
+  if (ht.hashValues.length > VIRTUAL_THRESHOLD) {
+    const table = document.createElement("table");
+    table.className = "data-table hashvals-virtual";
+    table.innerHTML = `${thead}<tbody></tbody>`;
+    container.appendChild(table);
+    container.appendChild(noResultMsg);
+
+    let filteredIndices = getFilteredIndices(initialFilter);
+    const handle = attachVirtualScroll(
+      table,
+      filteredIndices.length,
+      (i) => buildHashValueRow(filteredIndices[i], ht, symToBucket),
+      () => container.style.display !== "none"
+    );
+
+    return (term: string) => {
+      filteredIndices = getFilteredIndices(term);
+      handle.update(filteredIndices.length, (i) =>
+        buildHashValueRow(filteredIndices[i], ht, symToBucket)
+      );
+      noResultMsg.style.display = filteredIndices.length === 0 ? "" : "none";
+    };
   }
+
+  // Static table path (small tables).
+  const table = document.createElement("table");
+  table.className = "data-table";
+  table.innerHTML = thead;
+  const tbody = document.createElement("tbody");
   table.appendChild(tbody);
   container.appendChild(table);
+  container.appendChild(noResultMsg);
+
+  function buildStaticRows(term: string): void {
+    tbody.innerHTML = "";
+    const indices = getFilteredIndices(term);
+    for (const i of indices) tbody.appendChild(buildHashValueRow(i, ht, symToBucket));
+    noResultMsg.style.display = indices.length === 0 ? "" : "none";
+  }
+
+  buildStaticRows(initialFilter);
+  return buildStaticRows;
 }
 
 // ─── Main panel ───────────────────────────────────────────────────────────────
@@ -223,17 +280,46 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
   `;
   container.appendChild(stats);
 
+  // Shared filter state across Buckets / Hash Values sub-tabs.
+  // Bloom Filter has no symbol names and is not connected to the search.
+  let currentFilter = "";
+  let bucketsUpdater: ((term: string) => void) | null = null;
+  let hashValuesUpdater: ((term: string) => void) | null = null;
+
   createSubTabs(container, [
     {
       label: `Bloom Filter (${ht.bloomSize})`,
       render: (p: HTMLElement) => renderBloomFilter(p, ht),
     },
-    { label: `Buckets (${ht.nbuckets})`, render: (p: HTMLElement) => renderBuckets(p, ht) },
+    {
+      label: `Buckets (${ht.nbuckets})`,
+      render: (p: HTMLElement) => {
+        bucketsUpdater = renderBuckets(p, ht, currentFilter);
+      },
+    },
     {
       label: `Hash Values (${ht.hashValues.length})`,
-      render: (p: HTMLElement) => renderHashValues(p, ht),
+      render: (p: HTMLElement) => {
+        hashValuesUpdater = renderHashValues(p, ht, currentFilter);
+      },
     },
   ]);
+
+  // Append search input to the sub-tab section-nav.
+  const nav = container.querySelector<HTMLElement>(".section-nav");
+  if (nav) {
+    const searchInput = document.createElement("input");
+    searchInput.type = "search";
+    searchInput.className = "search-input";
+    searchInput.placeholder = "Filter by name…";
+    searchInput.setAttribute("aria-label", "Filter symbols by name");
+    searchInput.addEventListener("input", () => {
+      currentFilter = searchInput.value;
+      bucketsUpdater?.(currentFilter);
+      hashValuesUpdater?.(currentFilter);
+    });
+    nav.appendChild(searchInput);
+  }
 }
 
 // ─── Top-level export ─────────────────────────────────────────────────────────
