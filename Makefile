@@ -47,7 +47,7 @@ release:     ## Bump version and open a pull request to main  (VERSION=x.y.z req
 	cd frontend && npm version "$(VERSION)" --no-git-tag-version
 	git add frontend/package.json frontend/package-lock.json
 	git commit -m "chore: bump version to $(VERSION)"
-	git push
+	git push -u origin HEAD
 	gh pr create --title "chore: bump version to $(VERSION)" --body "" --base main
 
 help:        ## Show this help
