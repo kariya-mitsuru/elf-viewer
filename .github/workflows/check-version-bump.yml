@@ -23,7 +23,8 @@ jobs:
             exit 0
           fi
           BASE_REF="${{ github.base_ref }}"
-          git show "origin/${BASE_REF}:frontend/package.json" > /tmp/base_package.json
+          MERGE_BASE=$(git merge-base "origin/${BASE_REF}" HEAD)
+          git show "${MERGE_BASE}:frontend/package.json" > /tmp/base_package.json
           BASE_VERSION=$(node -p "require('/tmp/base_package.json').version")
           HEAD_VERSION=$(node -p "require('./frontend/package.json').version")
           echo "base=$BASE_VERSION, head=$HEAD_VERSION"
