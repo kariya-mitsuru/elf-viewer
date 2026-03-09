@@ -15,6 +15,7 @@ import {
   VIRTUAL_THRESHOLD,
   createSubTabs,
   appendEmptyMessage,
+  hexPad,
 } from "./viewUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 
@@ -109,10 +110,10 @@ function renderVirtualRelocationTable(
       const tr = document.createElement("tr");
       if (i % 2 === 0) tr.className = "vs-even";
       tr.innerHTML = `
-        <td class="mono">0x${r.offset.toString(16).toUpperCase().padStart(padW, "0")}</td>
+        <td class="mono">${hexPad(r.offset, padW)}</td>
         <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>
         <td class="mono">${relocTypeName(r.type)}</td>
-        <td class="mono">${r.symValue ? `0x${r.symValue.toString(16).toUpperCase().padStart(padW, "0")}` : ""}</td>
+        <td class="mono">${r.symValue ? hexPad(r.symValue, padW) : ""}</td>
         <td class="mono">${r.symName}</td>
         <td class="mono sym-version">${verName}</td>
         <td class="mono">${verNumCell}</td>
@@ -173,10 +174,10 @@ function renderRelocationSection(
     const addendCell = hasAddend ? `<td class="mono sym-right">${addendStr}</td>` : "";
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td class="mono">0x${r.offset.toString(16).toUpperCase().padStart(padW, "0")}</td>
+      <td class="mono">${hexPad(r.offset, padW)}</td>
       <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>
       <td class="mono">${relocTypeName(r.type)}</td>
-      <td class="mono">${r.symValue ? `0x${r.symValue.toString(16).toUpperCase().padStart(padW, "0")}` : ""}</td>
+      <td class="mono">${r.symValue ? hexPad(r.symValue, padW) : ""}</td>
       <td class="mono">${r.symName}</td>
       <td class="mono sym-version">${verName}</td>
       <td class="mono">${verNumCell}</td>
@@ -194,10 +195,7 @@ export function renderRelocations(container: HTMLElement, elf: ELFFile): void {
   container.innerHTML = `<h2 class="view-title">Relocations (${total} total)</h2>`;
 
   if (sections.length === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No relocations";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No relocations");
     return;
   }
 

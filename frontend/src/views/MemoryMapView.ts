@@ -17,19 +17,14 @@ import {
   type LayoutHeaderInfo,
 } from "./layout.ts";
 import { showContextMenu, type CtxMenuItem } from "../ui/ContextMenu.ts";
-import { type NavTarget, sectionNavTarget, navTargetLabel, dynNavTarget } from "./viewUtils.ts";
-
-function phNavTarget(phType: PHType): NavTarget | null {
-  switch (phType) {
-    case PHType.Dynamic:
-      return "dynamic";
-    case PHType.Note:
-    case PHType.GnuProperty:
-      return "notes";
-    default:
-      return null;
-  }
-}
+import { hideTooltip, addTooltipHandlers, escapeHtml, ttRow } from "../ui/Tooltip.ts";
+import {
+  type NavTarget,
+  sectionNavTarget,
+  navTargetLabel,
+  dynNavTarget,
+  phNavTarget,
+} from "./viewUtils.ts";
 
 // Attach a right-click context menu to an element.
 function attachCtxMenu(el: HTMLElement, items: Array<CtxMenuItem | null>): void {
@@ -632,60 +627,7 @@ function getRowAddrRange(row: Row): { start: bigint; end: bigint } | null {
   return null; // 'gap' rows have no segment address range
 }
 
-// ─── DOM helpers ──────────────────────────────────────────────────────────────
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-// ─── Tooltip singleton ────────────────────────────────────────────────────────
-
-let _tooltip: HTMLElement | null = null;
-
-function getTooltip(): HTMLElement {
-  if (!_tooltip) {
-    _tooltip = document.createElement("div");
-    _tooltip.className = "elf-tooltip";
-    _tooltip.style.display = "none";
-    document.body.appendChild(_tooltip);
-  }
-  return _tooltip;
-}
-
-function positionTooltip(t: HTMLElement, x: number, y: number): void {
-  const margin = 14;
-  const tw = t.offsetWidth;
-  const th = t.offsetHeight;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const left = x + tw + margin > vw - 8 ? x - tw - margin : x + margin;
-  const top = y + th + margin > vh - 8 ? y - th - margin : y + margin;
-  t.style.left = `${Math.max(4, left)}px`;
-  t.style.top = `${Math.max(4, top)}px`;
-}
-
-function showTooltip(html: string, x: number, y: number): void {
-  const t = getTooltip();
-  t.innerHTML = html;
-  t.style.display = "block";
-  positionTooltip(t, x, y);
-}
-
-function hideTooltip(): void {
-  if (_tooltip) _tooltip.style.display = "none";
-}
-
-function addTooltipHandlers(el: HTMLElement, getHtml: () => string): void {
-  el.addEventListener("mouseenter", (e) => showTooltip(getHtml(), e.clientX, e.clientY));
-  el.addEventListener("mousemove", (e) => {
-    if (_tooltip?.style.display !== "none") positionTooltip(getTooltip(), e.clientX, e.clientY);
-  });
-  el.addEventListener("mouseleave", () => hideTooltip());
-}
-
-function ttRow(key: string, val: string): string {
-  return `<tr><td class="tt-key">${key}</td><td class="tt-val">${escapeHtml(val)}</td></tr>`;
-}
+// ─── Tooltip HTML builders ────────────────────────────────────────────────────
 
 function sectionTooltipHtml(
   sec: LayoutSection,
