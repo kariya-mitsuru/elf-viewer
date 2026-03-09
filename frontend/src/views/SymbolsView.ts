@@ -14,7 +14,14 @@ import {
   SHN_ABS,
   SHN_COMMON,
 } from "../parser/types.ts";
-import { versionParts, verNumCellHtml, VIRTUAL_THRESHOLD, createSubTabs } from "./viewUtils.ts";
+import {
+  versionParts,
+  verNumCellHtml,
+  VIRTUAL_THRESHOLD,
+  createSubTabs,
+  appendEmptyMessage,
+  hexPad,
+} from "./viewUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 
 function bindName(b: STBind): string {
@@ -100,7 +107,7 @@ function renderVirtualTable(
     if (i % 2 === 0) tr.className = "vs-even";
     tr.innerHTML = `
       <td class="mono sym-right">${sym.index}</td>
-      <td class="mono">0x${sym.value.toString(16).toUpperCase().padStart(padW, "0")}</td>
+      <td class="mono">${hexPad(sym.value, padW)}</td>
       <td class="mono sym-right">${sym.size}</td>
       <td class="mono">${typeName(sym.type)}</td>
       <td class="mono">${bindName(sym.bind)}</td>
@@ -160,10 +167,7 @@ function renderSymbolTable(
   container.appendChild(h3);
 
   if (syms.length === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No symbols";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No symbols");
     return () => {};
   }
 
@@ -203,7 +207,7 @@ function renderSymbolTable(
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="mono sym-right">${sym.index}</td>
-        <td class="mono">0x${sym.value.toString(16).toUpperCase().padStart(padW, "0")}</td>
+        <td class="mono">${hexPad(sym.value, padW)}</td>
         <td class="mono sym-right">${sym.size}</td>
         <td class="mono">${typeName(sym.type)}</td>
         <td class="mono">${bindName(sym.bind)}</td>
@@ -241,10 +245,7 @@ export function renderSymbols(container: HTMLElement, elf: ELFFile): void {
   ].filter((t) => t.syms.length > 0);
 
   if (tables.length === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No symbol tables";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No symbol tables");
     return;
   }
 

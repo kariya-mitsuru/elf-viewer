@@ -5,6 +5,7 @@
 
 import { type ELFFile, type VersionDef, type VersionNeed } from "../parser/types.ts";
 import { slugId, renderSectionNav } from "../ui/SectionNav.ts";
+import { appendEmptyMessage } from "./viewUtils.ts";
 
 const VER_FLG_BASE = 0x1;
 const VER_FLG_WEAK = 0x2;
@@ -95,10 +96,7 @@ export function renderVersions(container: HTMLElement, elf: ELFFile): void {
   container.innerHTML = '<h2 class="view-title">Versions</h2>';
 
   if (!info || (info.versionDefs.length === 0 && info.versionNeeds.length === 0)) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No version information";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No version information");
     return;
   }
 
