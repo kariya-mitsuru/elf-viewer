@@ -13,75 +13,10 @@
 //   Uses virtual scrolling when nchain > VIRTUAL_THRESHOLD.
 
 import { type ELFFile, type HashTable } from "../parser/types.ts";
-import { VIRTUAL_THRESHOLD, createSubTabs } from "./viewUtils.ts";
+import { VIRTUAL_THRESHOLD, createSubTabs, appendEmptyMessage } from "./viewUtils.ts";
+import { renderBuckets } from "./hashUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 const STN_UNDEF = 0;
-
-// ─── Buckets tab ──────────────────────────────────────────────────────────────
-
-// Returns a setFilter function that rebuilds the table when the search term changes.
-// When filtering: empty buckets are hidden; only non-empty buckets with a matching
-// head symbol name are shown.
-function renderBuckets(
-  container: HTMLElement,
-  ht: HashTable,
-  initialFilter: string
-): (term: string) => void {
-  const table = document.createElement("table");
-  table.className = "data-table";
-  table.innerHTML = `
-    <thead><tr>
-      <th class="sym-right">Bucket #</th>
-      <th class="sym-right">Head Sym #</th>
-      <th>Symbol Name</th>
-    </tr></thead>
-  `;
-  const tbody = document.createElement("tbody");
-  table.appendChild(tbody);
-  container.appendChild(table);
-
-  const noResultMsg = document.createElement("p");
-  noResultMsg.className = "empty-msg search-no-result";
-  noResultMsg.textContent = "No matching symbols";
-  noResultMsg.style.display = "none";
-  container.appendChild(noResultMsg);
-
-  function buildRows(term: string): void {
-    tbody.innerHTML = "";
-    const lower = term.toLowerCase();
-    let count = 0;
-    for (let i = 0; i < ht.buckets.length; i++) {
-      const head = ht.buckets[i];
-      if (head === STN_UNDEF) {
-        if (!term) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td class="mono sym-right">${i}</td>
-            <td class="mono sym-right empty-bucket">—</td>
-            <td></td>
-          `;
-          tbody.appendChild(tr);
-          count++;
-        }
-      } else {
-        const name = ht.symNames[head] ?? "";
-        if (term && !name.toLowerCase().includes(lower)) continue;
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="mono sym-right">${i}</td>
-          <td class="mono sym-right">${head}</td>
-          <td class="mono">${name}</td>
-        `;
-        tbody.appendChild(tr);
-        count++;
-      }
-    }
-    noResultMsg.style.display = count === 0 ? "" : "none";
-  }
-
-  buildRows(initialFilter);
-  return buildRows;
-}
 
 // ─── Chains tab ───────────────────────────────────────────────────────────────
 
@@ -110,10 +45,7 @@ function renderChains(
   initialFilter: string
 ): (term: string) => void {
   if (ht.nchain === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No entries";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No entries");
     return () => {};
   }
 
@@ -258,10 +190,7 @@ export function renderHash(container: HTMLElement, elf: ELFFile): void {
   container.innerHTML = `<h2 class="view-title">Hash Table (SHT_HASH)</h2>`;
 
   if (tables.length === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No SHT_HASH sections found";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No SHT_HASH sections found");
     return;
   }
 

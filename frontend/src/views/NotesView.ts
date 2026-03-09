@@ -6,6 +6,7 @@
 import { type ELFFile, type Note } from "../parser/types.ts";
 import { type Reader } from "../parser/reader.ts";
 import { slugId, renderSectionNav } from "../ui/SectionNav.ts";
+import { appendEmptyMessage } from "./viewUtils.ts";
 
 // GNU note types
 const GNU_NOTE_TYPE: Record<number, string> = {
@@ -221,10 +222,7 @@ export function renderNotes(container: HTMLElement, elf: ELFFile): void {
   container.innerHTML = `<h2 class="view-title">Notes (${notes.length})</h2>`;
 
   if (notes.length === 0) {
-    const p = document.createElement("p");
-    p.className = "empty-msg";
-    p.textContent = "No notes";
-    container.appendChild(p);
+    appendEmptyMessage(container, "No notes");
     return;
   }
 

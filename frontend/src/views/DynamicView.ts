@@ -45,11 +45,13 @@ import {
 } from "../parser/types.ts";
 import { buildLayout, type LayoutDynEntry, companionToMainTag } from "./layout.ts";
 import { showContextMenu, type CtxMenuItem } from "../ui/ContextMenu.ts";
+import { showTooltip, hideTooltip, moveTooltip, escapeHtml, ttRow } from "../ui/Tooltip.ts";
 import {
   dynTagName,
   navTargetLabel,
   dynNavTarget,
   appendEmptyMessage,
+  hexPad,
   type NavTarget,
 } from "./viewUtils.ts";
 
@@ -118,49 +120,6 @@ function decodeBitFlags(val: bigint, bits: [number, string][]): string {
 }
 
 // ─── Tooltip helpers ──────────────────────────────────────────────────────────
-
-let _tooltip: HTMLElement | null = null;
-
-function getTooltip(): HTMLElement {
-  if (!_tooltip) {
-    _tooltip = document.createElement("div");
-    _tooltip.className = "elf-tooltip";
-    _tooltip.style.display = "none";
-    document.body.appendChild(_tooltip);
-  }
-  return _tooltip;
-}
-
-function positionTooltip(t: HTMLElement, x: number, y: number): void {
-  const margin = 14;
-  const tw = t.offsetWidth,
-    th = t.offsetHeight;
-  const vw = window.innerWidth,
-    vh = window.innerHeight;
-  const left = x + tw + margin > vw - 8 ? x - tw - margin : x + margin;
-  const top = y + th + margin > vh - 8 ? y - th - margin : y + margin;
-  t.style.left = `${Math.max(4, left)}px`;
-  t.style.top = `${Math.max(4, top)}px`;
-}
-
-function showTooltip(html: string, x: number, y: number): void {
-  const t = getTooltip();
-  t.innerHTML = html;
-  t.style.display = "block";
-  positionTooltip(t, x, y);
-}
-
-function hideTooltip(): void {
-  if (_tooltip) _tooltip.style.display = "none";
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function ttRow(key: string, val: string): string {
-  return `<tr><td class="tt-key">${key}</td><td class="tt-val">${escapeHtml(val)}</td></tr>`;
-}
 
 function dynEntryTooltipHtml(le: LayoutDynEntry): string {
   const fmtAddr = (v: bigint) => `0x${v.toString(16).toUpperCase()}`;
@@ -236,7 +195,7 @@ export function renderDynamic(
     }
 
     tr.innerHTML = `
-      <td class="mono">0x${de.tag.toString(16).toUpperCase().padStart(16, "0")}</td>
+      <td class="mono">${hexPad(de.tag, 16)}</td>
       <td class="mono">${dynTagName(de.tag)}</td>
       <td class="mono">${valueStr}</td>
     `;
@@ -249,9 +208,7 @@ export function renderDynamic(
       tr.addEventListener("mouseenter", (e) =>
         showTooltip(dynEntryTooltipHtml(le), e.clientX, e.clientY)
       );
-      tr.addEventListener("mousemove", (e) => {
-        if (_tooltip?.style.display !== "none") positionTooltip(getTooltip(), e.clientX, e.clientY);
-      });
+      tr.addEventListener("mousemove", (e) => moveTooltip(e.clientX, e.clientY));
       tr.addEventListener("mouseleave", () => hideTooltip());
     }
 
