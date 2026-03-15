@@ -950,11 +950,21 @@ function placeGapRow(
   addr.style.gridRow = String(gridRow);
   addr.style.gridColumn = "1";
 
+  if (isObjectFile && cols.sections !== null) {
+    const item = document.createElement("div");
+    item.className = "sec-item leading-gap";
+    item.style.gridRow = String(gridRow);
+    item.style.gridColumn = String(cols.sections);
+    item.innerHTML = `<span>(padding)</span><span style="margin-left:auto;font-size:10px;opacity:0.7">0x${row.bytes.toString(16).toUpperCase()}</span>`;
+    container.appendChild(item);
+    return;
+  }
+
   const gap = document.createElement("div");
   gap.className = "gap-cell";
   gap.style.gridRow = String(gridRow);
   const gapStartCol = cols.sections ?? cols.dynamic ?? cols.nlBase;
-  gap.style.gridColumn = `${gapStartCol} / ${isObjectFile ? "-1" : "-2"}`;
+  gap.style.gridColumn = `${gapStartCol} / -2`;
   if (row.gapColorClass) {
     const [r, g, b] = colorMap[row.gapColorClass] ?? colorMap.other;
     gap.style.background = `rgba(${r}, ${g}, ${b}, 0.12)`;
@@ -963,17 +973,15 @@ function placeGapRow(
   gap.textContent = `gap  0x${row.bytes.toString(16).toUpperCase()}${row.gapFlags ? ` [${row.gapFlags}]` : ""}`;
   container.appendChild(gap);
 
-  if (!isObjectFile) {
-    const rAddr = document.createElement("div");
-    rAddr.className = "addr-cell";
-    rAddr.style.gridRow = String(gridRow);
-    rAddr.style.gridColumn = "-2";
-    rAddr.style.flexDirection = "column";
-    rAddr.style.alignItems = "center";
-    rAddr.style.justifyContent = "space-between";
-    rAddr.innerHTML = `<span>${fmtAddr(row.gapStart)}</span><span>${fmtAddr(row.gapStart + row.bytes - 1n)}</span>`;
-    container.appendChild(rAddr);
-  }
+  const rAddr = document.createElement("div");
+  rAddr.className = "addr-cell";
+  rAddr.style.gridRow = String(gridRow);
+  rAddr.style.gridColumn = "-2";
+  rAddr.style.flexDirection = "column";
+  rAddr.style.alignItems = "center";
+  rAddr.style.justifyContent = "space-between";
+  rAddr.innerHTML = `<span>${fmtAddr(row.gapStart)}</span><span>${fmtAddr(row.gapStart + row.bytes - 1n)}</span>`;
+  container.appendChild(rAddr);
 }
 
 function placeHeaderRow(
