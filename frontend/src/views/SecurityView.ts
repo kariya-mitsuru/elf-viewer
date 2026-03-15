@@ -5,6 +5,7 @@
 
 import {
   type ELFFile,
+  ELFMachine,
   ELFType,
   PHType,
   DynTag,
@@ -207,6 +208,81 @@ function detectSymbols(elf: ELFFile): SecurityFeature {
   };
 }
 
+// AArch64 DT_AARCH64_BTI_PLT / DT_AARCH64_PAC_PLT tag values
+const DT_AARCH64_BTI_PLT = 0x70000001;
+const DT_AARCH64_PAC_PLT = 0x70000003;
+
+function detectAArch64Bti(elf: ELFFile): SecurityFeature {
+  // Check dynamic section for DT_AARCH64_BTI_PLT
+  const hasBtiPlt = elf.dynamicEntries.some((e) => (e.tag as number) === DT_AARCH64_BTI_PLT);
+
+  // Check GNU properties for BTI (bit 0 of GNU_PROPERTY_AARCH64_FEATURE_1_AND)
+  let hasBtiProp = false;
+  for (const note of elf.notes) {
+    if (note.name === "GNU" && note.type === 5) {
+      // NT_GNU_PROPERTY_TYPE_0: scan property entries for 0xc0000000
+      const r = note.desc;
+      const align = r.is64 ? 8 : 4;
+      let off = 0;
+      while (off + 8 <= r.view.byteLength) {
+        const ptype = r.u32(off);
+        const datasz = r.u32(off + 4);
+        if (ptype === 0xc0000000 && datasz >= 4) {
+          const bits = r.u32(off + 8);
+          if (bits & 0x1) hasBtiProp = true;
+        }
+        off += 8 + ((datasz + align - 1) & ~(align - 1));
+      }
+    }
+  }
+
+  const details: string[] = [];
+  if (hasBtiPlt) details.push("DT_AARCH64_BTI_PLT");
+  if (hasBtiProp) details.push("GNU_PROPERTY BTI");
+
+  return {
+    name: "AArch64 BTI",
+    status: details.length > 0 ? "enabled" : "disabled",
+    detail: details.length > 0 ? details.join(" + ") : "No BTI markers found",
+    description: "Branch Target Identification — mitigates JOP/ROP attacks on AArch64",
+  };
+}
+
+function detectAArch64Pac(elf: ELFFile): SecurityFeature {
+  // Check dynamic section for DT_AARCH64_PAC_PLT
+  const hasPacPlt = elf.dynamicEntries.some((e) => (e.tag as number) === DT_AARCH64_PAC_PLT);
+
+  // Check GNU properties for PAC (bit 1 of GNU_PROPERTY_AARCH64_FEATURE_1_AND)
+  let hasPacProp = false;
+  for (const note of elf.notes) {
+    if (note.name === "GNU" && note.type === 5) {
+      const r = note.desc;
+      const align = r.is64 ? 8 : 4;
+      let off = 0;
+      while (off + 8 <= r.view.byteLength) {
+        const ptype = r.u32(off);
+        const datasz = r.u32(off + 4);
+        if (ptype === 0xc0000000 && datasz >= 4) {
+          const bits = r.u32(off + 8);
+          if (bits & 0x2) hasPacProp = true;
+        }
+        off += 8 + ((datasz + align - 1) & ~(align - 1));
+      }
+    }
+  }
+
+  const details: string[] = [];
+  if (hasPacPlt) details.push("DT_AARCH64_PAC_PLT");
+  if (hasPacProp) details.push("GNU_PROPERTY PAC");
+
+  return {
+    name: "AArch64 PAC",
+    status: details.length > 0 ? "enabled" : "disabled",
+    detail: details.length > 0 ? details.join(" + ") : "No PAC markers found",
+    description: "Pointer Authentication Code — protects return addresses on AArch64",
+  };
+}
+
 const STATUS_LABEL: Record<SecurityStatus, string> = {
   enabled: "Enabled",
   partial: "Partial",
@@ -225,6 +301,11 @@ export function renderSecurity(container: HTMLElement, elf: ELFFile): void {
     detectRunPath(elf),
     detectSymbols(elf),
   ];
+
+  // AArch64-specific security features
+  if (elf.header.machine === ELFMachine.AArch64) {
+    features.push(detectAArch64Bti(elf), detectAArch64Pac(elf));
+  }
 
   container.innerHTML = `<h2 class="view-title">Security Features</h2>`;
 

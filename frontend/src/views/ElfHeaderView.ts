@@ -85,6 +85,20 @@ function osabiName(abi: ELFOSABI): string {
   }
 }
 
+// AArch64 ELF header flags
+const EF_AARCH64_CHERI_PURECAP = 0x00010000;
+
+function elfFlagsStr(flags: number, machine: ELFMachine): string {
+  const hex = `0x${flags.toString(16)}`;
+  if (flags === 0) return hex;
+  if (machine === ELFMachine.AArch64) {
+    const names: string[] = [];
+    if (flags & EF_AARCH64_CHERI_PURECAP) names.push("CHERI_PURECAP");
+    return names.length > 0 ? `${hex} (${names.join(", ")})` : hex;
+  }
+  return hex;
+}
+
 export function renderElfHeader(container: HTMLElement, elf: ELFFile): void {
   const h = elf.header;
   const hex = (n: number | bigint) => `0x${n.toString(16)}`;
@@ -109,7 +123,7 @@ export function renderElfHeader(container: HTMLElement, elf: ELFFile): void {
     ["Entry point address", hex(h.entryPoint)],
     ["Start of program headers", `${h.phOffset} (bytes into file)`],
     ["Start of section headers", `${h.shOffset} (bytes into file)`],
-    ["Flags", hex(h.flags)],
+    ["Flags", elfFlagsStr(h.flags, h.machine)],
     ["Size of this header", `${h.ehSize} (bytes)`],
     ["Size of program headers", `${h.phEntSize} (bytes)`],
     ["Number of program headers", dec(h.phNum)],

@@ -147,6 +147,8 @@ export function renderDynamic(
     return;
   }
 
+  const machine = elf.header.machine;
+
   // Build a tag → LayoutDynEntry map for navigation/tooltip metadata.
   // This is only populated for address-type tags (DT_RELA, DT_SYMTAB, etc.).
   const layout = buildLayout(elf, "");
@@ -196,7 +198,7 @@ export function renderDynamic(
 
     tr.innerHTML = `
       <td class="mono">${hexPad(de.tag, 16)}</td>
-      <td class="mono">${dynTagName(de.tag)}</td>
+      <td class="mono">${dynTagName(de.tag, machine)}</td>
       <td class="mono">${valueStr}</td>
     `;
 
@@ -236,7 +238,7 @@ export function renderDynamic(
       le.byteSize > 0 &&
       onHexDump
     ) {
-      const label = le.sectionName ?? dynTagName(de.tag);
+      const label = le.sectionName ?? dynTagName(de.tag, machine);
       const off = le.fileOffset,
         sz = le.byteSize;
       menuItems.push({ label: `Hex Dump: ${label}`, action: () => onHexDump(label, off, sz) });
