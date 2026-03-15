@@ -259,6 +259,295 @@ function regName(n: number, machine: ELFMachine): string {
   return `r${n}`;
 }
 
+// ─── DWARF expression decoder ────────────────────────────────────────────────
+
+function decodeDwarfExpr(
+  view: DataView,
+  start: number,
+  len: number,
+  le: boolean,
+  machine: ELFMachine
+): string[] {
+  const ops: string[] = [];
+  let off = start;
+  const end = start + len;
+  const rn = (n: number) => `r${n} (${regName(n, machine)})`;
+
+  while (off < end) {
+    const op = view.getUint8(off++);
+
+    // DW_OP_lit0..DW_OP_lit31
+    if (op >= 0x30 && op <= 0x4f) {
+      ops.push(`DW_OP_lit${op - 0x30}`);
+      continue;
+    }
+    // DW_OP_reg0..DW_OP_reg31
+    if (op >= 0x50 && op <= 0x6f) {
+      const reg = op - 0x50;
+      ops.push(`DW_OP_reg${reg} (${regName(reg, machine)})`);
+      continue;
+    }
+    // DW_OP_breg0..DW_OP_breg31
+    if (op >= 0x70 && op <= 0x8f) {
+      const reg = op - 0x70;
+      const [soff, n] = readSLEB128(view, off);
+      off += n;
+      ops.push(`DW_OP_breg${reg} (${regName(reg, machine)}): ${soff}`);
+      continue;
+    }
+
+    switch (op) {
+      case 0x03: {
+        // DW_OP_addr
+        const sz = view.byteLength - off >= 8 ? 8 : 4;
+        const addr =
+          sz === 8
+            ? view.getBigUint64(off, le)
+            : BigInt(view.getUint32(off, le));
+        off += sz;
+        ops.push(`DW_OP_addr: 0x${addr.toString(16)}`);
+        break;
+      }
+      case 0x06:
+        ops.push("DW_OP_deref");
+        break;
+      case 0x08: {
+        // DW_OP_const1u
+        ops.push(`DW_OP_const1u: ${view.getUint8(off++)}`);
+        break;
+      }
+      case 0x09: {
+        // DW_OP_const1s
+        ops.push(`DW_OP_const1s: ${view.getInt8(off++)}`);
+        break;
+      }
+      case 0x0a: {
+        // DW_OP_const2u
+        ops.push(`DW_OP_const2u: ${view.getUint16(off, le)}`);
+        off += 2;
+        break;
+      }
+      case 0x0b: {
+        // DW_OP_const2s
+        ops.push(`DW_OP_const2s: ${view.getInt16(off, le)}`);
+        off += 2;
+        break;
+      }
+      case 0x0c: {
+        // DW_OP_const4u
+        ops.push(`DW_OP_const4u: ${view.getUint32(off, le)}`);
+        off += 4;
+        break;
+      }
+      case 0x0d: {
+        // DW_OP_const4s
+        ops.push(`DW_OP_const4s: ${view.getInt32(off, le)}`);
+        off += 4;
+        break;
+      }
+      case 0x0e: {
+        // DW_OP_const8u
+        ops.push(`DW_OP_const8u: ${view.getBigUint64(off, le)}`);
+        off += 8;
+        break;
+      }
+      case 0x0f: {
+        // DW_OP_const8s
+        ops.push(`DW_OP_const8s: ${view.getBigInt64(off, le)}`);
+        off += 8;
+        break;
+      }
+      case 0x10: {
+        // DW_OP_constu
+        const [v, n] = readULEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_constu: ${v}`);
+        break;
+      }
+      case 0x11: {
+        // DW_OP_consts
+        const [v, n] = readSLEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_consts: ${v}`);
+        break;
+      }
+      case 0x12:
+        ops.push("DW_OP_dup");
+        break;
+      case 0x13:
+        ops.push("DW_OP_drop");
+        break;
+      case 0x14:
+        ops.push("DW_OP_over");
+        break;
+      case 0x15: {
+        // DW_OP_pick
+        ops.push(`DW_OP_pick: ${view.getUint8(off++)}`);
+        break;
+      }
+      case 0x16:
+        ops.push("DW_OP_swap");
+        break;
+      case 0x17:
+        ops.push("DW_OP_rot");
+        break;
+      case 0x19:
+        ops.push("DW_OP_abs");
+        break;
+      case 0x1a:
+        ops.push("DW_OP_and");
+        break;
+      case 0x1b:
+        ops.push("DW_OP_div");
+        break;
+      case 0x1c:
+        ops.push("DW_OP_minus");
+        break;
+      case 0x1d:
+        ops.push("DW_OP_mod");
+        break;
+      case 0x1e:
+        ops.push("DW_OP_mul");
+        break;
+      case 0x1f:
+        ops.push("DW_OP_neg");
+        break;
+      case 0x20:
+        ops.push("DW_OP_not");
+        break;
+      case 0x21:
+        ops.push("DW_OP_or");
+        break;
+      case 0x22:
+        ops.push("DW_OP_plus");
+        break;
+      case 0x23: {
+        // DW_OP_plus_uconst
+        const [v, n] = readULEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_plus_uconst: ${v}`);
+        break;
+      }
+      case 0x24:
+        ops.push("DW_OP_shl");
+        break;
+      case 0x25:
+        ops.push("DW_OP_shr");
+        break;
+      case 0x26:
+        ops.push("DW_OP_shra");
+        break;
+      case 0x27:
+        ops.push("DW_OP_xor");
+        break;
+      case 0x28: {
+        // DW_OP_bra
+        const target = view.getInt16(off, le);
+        off += 2;
+        ops.push(`DW_OP_bra: ${target}`);
+        break;
+      }
+      case 0x29:
+        ops.push("DW_OP_eq");
+        break;
+      case 0x2a:
+        ops.push("DW_OP_ge");
+        break;
+      case 0x2b:
+        ops.push("DW_OP_gt");
+        break;
+      case 0x2c:
+        ops.push("DW_OP_le");
+        break;
+      case 0x2d:
+        ops.push("DW_OP_lt");
+        break;
+      case 0x2e:
+        ops.push("DW_OP_ne");
+        break;
+      case 0x2f: {
+        // DW_OP_skip
+        const target = view.getInt16(off, le);
+        off += 2;
+        ops.push(`DW_OP_skip: ${target}`);
+        break;
+      }
+      case 0x90: {
+        // DW_OP_regx
+        const [reg, n] = readULEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_regx: ${rn(reg)}`);
+        break;
+      }
+      case 0x91: {
+        // DW_OP_fbreg
+        const [soff, n] = readSLEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_fbreg: ${soff}`);
+        break;
+      }
+      case 0x92: {
+        // DW_OP_bregx
+        const [reg, n1] = readULEB128(view, off);
+        off += n1;
+        const [soff, n2] = readSLEB128(view, off);
+        off += n2;
+        ops.push(`DW_OP_bregx: ${rn(reg)} ${soff}`);
+        break;
+      }
+      case 0x93: {
+        // DW_OP_piece
+        const [sz, n] = readULEB128(view, off);
+        off += n;
+        ops.push(`DW_OP_piece: ${sz}`);
+        break;
+      }
+      case 0x94: {
+        // DW_OP_deref_size
+        ops.push(`DW_OP_deref_size: ${view.getUint8(off++)}`);
+        break;
+      }
+      case 0x96: {
+        // DW_OP_nop
+        ops.push("DW_OP_nop");
+        break;
+      }
+      case 0x9c:
+        ops.push("DW_OP_call_frame_cfa");
+        break;
+      case 0x9d: {
+        // DW_OP_bit_piece
+        const [sz, n1] = readULEB128(view, off);
+        off += n1;
+        const [boff, n2] = readULEB128(view, off);
+        off += n2;
+        ops.push(`DW_OP_bit_piece: ${sz} offset ${boff}`);
+        break;
+      }
+      case 0x9f:
+        ops.push("DW_OP_stack_value");
+        break;
+      default:
+        ops.push(`DW_OP_unknown(0x${op.toString(16)})`);
+        // Can't determine operand size — bail out to avoid misalignment
+        off = end;
+        break;
+    }
+  }
+  return ops;
+}
+
+function fmtDwarfExpr(
+  view: DataView,
+  off: number,
+  len: number,
+  le: boolean,
+  machine: ELFMachine
+): string {
+  const ops = decodeDwarfExpr(view, off, len, le, machine);
+  return ops.join("; ");
+}
+
 // ─── CFI instruction decoder ─────────────────────────────────────────────────
 
 function decodeCFI(
@@ -396,8 +685,10 @@ function decodeCFI(
         case 0x0f: {
           // DW_CFA_def_cfa_expression
           const [len, n] = readULEB128(view, off);
-          off += n + len;
-          instrs.push(`DW_CFA_def_cfa_expression (${len} bytes)`);
+          off += n;
+          const expr0f = fmtDwarfExpr(view, off, len, le, machine);
+          off += len;
+          instrs.push(`DW_CFA_def_cfa_expression (${expr0f})`);
           break;
         }
         case 0x10: {
@@ -405,8 +696,10 @@ function decodeCFI(
           const [reg, n1] = readULEB128(view, off);
           off += n1;
           const [len, n2] = readULEB128(view, off);
-          off += n2 + len;
-          instrs.push(`DW_CFA_expression: ${rn(reg)} (${len} bytes)`);
+          off += n2;
+          const expr10 = fmtDwarfExpr(view, off, len, le, machine);
+          off += len;
+          instrs.push(`DW_CFA_expression: ${rn(reg)} (${expr10})`);
           break;
         }
         case 0x11: {
@@ -457,8 +750,10 @@ function decodeCFI(
           const [reg, n1] = readULEB128(view, off);
           off += n1;
           const [len, n2] = readULEB128(view, off);
-          off += n2 + len;
-          instrs.push(`DW_CFA_val_expression: ${rn(reg)} (${len} bytes)`);
+          off += n2;
+          const expr16 = fmtDwarfExpr(view, off, len, le, machine);
+          off += len;
+          instrs.push(`DW_CFA_val_expression: ${rn(reg)} (${expr16})`);
           break;
         }
         case 0x2e: {
