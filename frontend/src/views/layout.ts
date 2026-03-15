@@ -295,7 +295,7 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
 
       return {
         tag: de.tag as number,
-        tagName: dynTagName(de.tag),
+        tagName: dynTagName(de.tag, elf.header.machine),
         addr: de.value,
         value: de.value,
         companions,

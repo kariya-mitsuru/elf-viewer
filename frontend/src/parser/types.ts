@@ -162,10 +162,23 @@ export enum DynTag {
   VerNeed = 0x6ffffffe,
   VerNeedNum = 0x6fffffff,
   Flags1 = 0x6ffffffb,
-  // Architecture-specific (x86-64)
+  // Architecture-specific tags (0x70000000+ range).
+  // These overlap across architectures — use dynTagName() with machine context.
+  // x86-64
   X86_64Plt = 0x70000000,
   X86_64PltSz = 0x70000001,
   X86_64PltEnt = 0x70000003,
+  // AArch64 (same numeric range, different meaning)
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  AArch64BtiPlt = 0x70000001,
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  AArch64PacPlt = 0x70000003,
+  AArch64VariantPcs = 0x70000005,
+  AArch64MemtagMode = 0x70000009,
+  AArch64MemtagHeap = 0x7000000b,
+  AArch64MemtagStack = 0x7000000d,
+  AArch64MemtagGlobals = 0x7000000f,
+  AArch64MemtagGlobalsSz = 0x70000011,
 }
 
 // Symbol binding (ELF32_ST_BIND / ELF64_ST_BIND)

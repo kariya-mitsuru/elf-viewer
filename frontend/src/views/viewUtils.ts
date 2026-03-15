@@ -8,6 +8,7 @@ import {
   type ELFFile,
   type VersionInfo,
   ELFType,
+  ELFMachine,
   SHType,
   PHType,
   DynTag,
@@ -301,8 +302,26 @@ export function phTypeName(t: PHType): string {
   }
 }
 
+// Architecture-specific dynamic tag names (0x70000000+ range)
+const AARCH64_DYN_TAGS: Record<number, string> = {
+  0x70000001: "AARCH64_BTI_PLT",
+  0x70000003: "AARCH64_PAC_PLT",
+  0x70000005: "AARCH64_VARIANT_PCS",
+  0x70000009: "AARCH64_MEMTAG_MODE",
+  0x7000000b: "AARCH64_MEMTAG_HEAP",
+  0x7000000d: "AARCH64_MEMTAG_STACK",
+  0x7000000f: "AARCH64_MEMTAG_GLOBALS",
+  0x70000011: "AARCH64_MEMTAG_GLOBALSSZ",
+};
+
+const X86_64_DYN_TAGS: Record<number, string> = {
+  0x70000000: "X86_64_PLT",
+  0x70000001: "X86_64_PLTSZ",
+  0x70000003: "X86_64_PLTENT",
+};
+
 /** Dynamic section tag → display name. */
-export function dynTagName(tag: DynTag): string {
+export function dynTagName(tag: DynTag, machine?: ELFMachine): string {
   switch (tag) {
     case DynTag.Null:
       return "NULL";
@@ -390,14 +409,19 @@ export function dynTagName(tag: DynTag): string {
       return "RELR";
     case DynTag.RelrEnt:
       return "RELRENT";
-    case DynTag.X86_64Plt:
-      return "X86_64_PLT";
-    case DynTag.X86_64PltSz:
-      return "X86_64_PLTSZ";
-    case DynTag.X86_64PltEnt:
-      return "X86_64_PLTENT";
-    default:
-      return `0x${(tag as number).toString(16).toUpperCase()}`;
+    default: {
+      // Architecture-specific range (0x70000000+)
+      const tagNum = tag as number;
+      if (tagNum >= 0x70000000 && tagNum <= 0x7fffffff) {
+        const archTable =
+          machine === ELFMachine.AArch64
+            ? AARCH64_DYN_TAGS
+            : X86_64_DYN_TAGS;
+        const name = archTable[tagNum];
+        if (name) return name;
+      }
+      return `0x${tagNum.toString(16).toUpperCase()}`;
+    }
   }
 }
 
