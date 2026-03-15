@@ -16,13 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           token: ${{ secrets.GH_PAT }}
 
       - name: Check if package.json version changed
         id: check
         run: |
-          git show HEAD^:frontend/package.json > /tmp/prev_package.json 2>/dev/null
+          git show ${{ github.event.before }}:frontend/package.json > /tmp/prev_package.json 2>/dev/null
           if [ $? -eq 0 ]; then
             PREV=$(node -p "require('/tmp/prev_package.json').version")
           else
