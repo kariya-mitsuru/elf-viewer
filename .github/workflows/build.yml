@@ -7,12 +7,28 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
+  rebase:
+    name: Rebase onto main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebase onto main
+        run: gh pr update-branch ${{ github.event.pull_request.number }} --rebase --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   lint:
     name: Lint & Format (ESLint + Prettier)
+    needs: rebase
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -29,9 +45,12 @@ jobs:
 
   frontend:
     name: Frontend (TypeScript + Vite)
+    needs: rebase
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -42,9 +61,12 @@ jobs:
 
   desktop:
     name: Desktop (Wails / Linux amd64)
+    needs: rebase
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - uses: actions/setup-go@v5
         with:
