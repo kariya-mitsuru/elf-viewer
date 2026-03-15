@@ -222,6 +222,7 @@ export class App {
           (elf.versionInfo.versionDefs.length === 0 && elf.versionInfo.versionNeeds.length === 0),
       },
       { id: "notes", label: "Notes", group: "Data", disabled: elf.notes.length === 0 },
+      { id: "eh-frame", label: ".eh_frame", group: "Data", disabled: !elf.ehFrame },
       { id: "security", label: "Security", group: "Views" },
       { id: "memory-map", label: "Memory Map", group: "Views", disabled: isObjFile },
       {
@@ -274,6 +275,9 @@ export class App {
         break;
       case "notes":
         this.openNotesTab(elf);
+        break;
+      case "eh-frame":
+        this.openEhFrameTab(elf);
         break;
       case "security":
         this.openSecurityTab(elf);
@@ -757,6 +761,19 @@ export class App {
       closeable: true,
       render: (container) => {
         import("./views/NotesView.ts").then(({ renderNotes }) => renderNotes(container, elf));
+      },
+    });
+  }
+
+  private openEhFrameTab(elf: ELFFile): void {
+    this.tabManager!.openTab({
+      id: "eh-frame",
+      label: ".eh_frame",
+      closeable: true,
+      render: (container) => {
+        import("./views/EhFrameView.ts").then(({ renderEhFrame }) =>
+          renderEhFrame(container, elf)
+        );
       },
     });
   }

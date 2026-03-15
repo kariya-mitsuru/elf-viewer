@@ -1090,3 +1090,77 @@ button.section-nav-link:hover {
     color: #7f849c;
     border: 1px solid rgba(127, 132, 156, 0.35);
 }
+
+/* ─── .eh_frame view ─────────────────────────────────────────────────────── */
+
+.eh-record {
+    margin-bottom: 4px;
+    border: 1px solid rgba(127, 132, 156, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.eh-record-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: rgba(127, 132, 156, 0.08);
+    font-size: 0.85em;
+}
+
+.eh-offset {
+    color: #7f849c;
+    min-width: 6em;
+}
+
+.eh-length {
+    color: #7f849c;
+    min-width: 6em;
+}
+
+.eh-tag {
+    font-weight: 600;
+    font-size: 0.8em;
+    padding: 1px 6px;
+    border-radius: 3px;
+}
+
+.eh-tag-cie {
+    background: rgba(137, 180, 250, 0.2);
+    color: #89b4fa;
+}
+
+.eh-tag-fde {
+    background: rgba(166, 227, 161, 0.2);
+    color: #a6e3a1;
+}
+
+.eh-detail {
+    color: #cdd6f4;
+}
+
+.eh-record .info-table {
+    margin: 0;
+    font-size: 0.85em;
+}
+
+.eh-info {
+    padding: 2px 8px;
+}
+
+.eh-instructions {
+    padding: 2px 8px 4px;
+    font-size: 0.8em;
+}
+
+.eh-instr {
+    color: #a6adc8;
+    padding: 1px 0;
+}
+
+.eh-lsda {
+    padding: 2px 8px;
+    font-size: 0.85em;
+    color: #a6adc8;
+}

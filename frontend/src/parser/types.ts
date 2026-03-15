@@ -415,6 +415,58 @@ export interface VersionInfo {
   verDefFileOffset: number | null; // file offset of .gnu.version_d (null if not resolvable)
 }
 
+// ─── Exception handling frame structures (.eh_frame / .eh_frame_hdr) ──────────
+
+export interface EhFrameCIE {
+  offset: number; // byte offset within .eh_frame section
+  length: number; // total record byte size (including length field)
+  version: number;
+  augmentation: string;
+  codeAlignFactor: number;
+  dataAlignFactor: number;
+  returnAddressReg: number;
+  fdeEncoding: number; // DW_EH_PE encoding for FDE pointers ('R' augmentation)
+  lsdaEncoding: number; // DW_EH_PE encoding for LSDA pointers ('L' augmentation)
+  personalityEncoding: number; // DW_EH_PE encoding for personality routine ('P' augmentation)
+  personalityRoutine: bigint; // personality function address (0n if absent)
+  isSignalFrame: boolean; // 'S' augmentation flag
+  initialInstructions: string[]; // decoded CFI instructions
+}
+
+export interface EhFrameFDE {
+  offset: number; // byte offset within .eh_frame section
+  length: number; // total record byte size
+  cieOffset: number; // offset of associated CIE within .eh_frame
+  pcBegin: bigint; // initial location (resolved virtual address)
+  pcRange: bigint; // address range covered
+  lsda: bigint; // LSDA pointer (0n if absent)
+  instructions: string[]; // decoded CFI instructions
+}
+
+export interface EhFrameHdrEntry {
+  initialLocation: bigint;
+  fdeOffset: bigint; // pointer to FDE (resolved)
+}
+
+export interface EhFrameHdr {
+  version: number;
+  ehFramePtrEnc: number; // encoding for eh_frame_ptr
+  fdeCountEnc: number; // encoding for fde_count
+  tableEnc: number; // encoding for binary search table entries
+  ehFramePtr: bigint; // pointer to .eh_frame
+  fdeCount: number;
+  table: EhFrameHdrEntry[];
+}
+
+export interface EhFrameData {
+  cies: EhFrameCIE[];
+  fdes: EhFrameFDE[];
+  hdr: EhFrameHdr | null;
+  sectionFileOffset: number; // file offset of .eh_frame
+  sectionVaddr: bigint; // virtual address of .eh_frame
+  hdrSectionFileOffset: number | null; // file offset of .eh_frame_hdr
+}
+
 // Top-level result returned by the ELF parser
 export interface ELFFile {
   header: ELFHeader;
@@ -430,6 +482,7 @@ export interface ELFFile {
   versionInfo: VersionInfo | null;
   hashTables: HashTable[]; // from DT_HASH dynamic entry (.hash)
   gnuHashTable: GnuHashTable | null; // from DT_GNU_HASH (.gnu.hash)
+  ehFrame: EhFrameData | null; // from .eh_frame / .eh_frame_hdr
   // Raw bytes (kept for future hex-dump use)
   raw: Uint8Array;
 }
