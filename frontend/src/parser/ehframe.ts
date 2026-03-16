@@ -796,14 +796,24 @@ function readCString(view: DataView, off: number): [string, number] {
   return [new TextDecoder().decode(bytes), end + 1 - off]; // +1 for NUL
 }
 
-// ─── .eh_frame parser ────────────────────────────────────────────────────────
+// ─── .eh_frame / .debug_frame parser ─────────────────────────────────────────
 
-function parseEhFrameSection(
+/**
+ * Parse CIE/FDE records from an .eh_frame or .debug_frame section.
+ *
+ * Key differences between the two formats:
+ *  - CIE sentinel: .eh_frame uses 0, .debug_frame uses 0xFFFFFFFF (or all-ones for 64-bit)
+ *  - FDE CIE pointer: .eh_frame is a relative backward offset from the field,
+ *    .debug_frame is an absolute offset from the section start
+ *  - .debug_frame has no 'z' augmentation data (pointers are always absptr)
+ */
+function parseCfiSection(
   r: Reader,
   sectionFileOffset: number,
   sectionSize: number,
   sectionVaddr: bigint,
-  machine: ELFMachine
+  machine: ELFMachine,
+  isDebugFrame: boolean
 ): { cies: EhFrameCIE[]; fdes: EhFrameFDE[] } {
   const cies: EhFrameCIE[] = [];
   const fdes: EhFrameFDE[] = [];
@@ -835,7 +845,7 @@ function parseEhFrameSection(
     const recordEnd = contentStart + length;
     if (recordEnd > sectionSize) break;
 
-    // CIE_id / CIE_pointer (4 bytes in .eh_frame, 8 bytes if extended)
+    // CIE_id / CIE_pointer (4 bytes normally, 8 bytes if 64-bit DWARF)
     const idSize = extendedLength ? 8 : 4;
     if (pos + idSize > recordEnd) {
       pos = recordEnd;
@@ -848,15 +858,24 @@ function parseEhFrameSection(
 
     const totalRecordSize = recordEnd - recordStart;
 
-    if (idField === 0) {
-      // CIE
+    // CIE sentinel: .eh_frame = 0, .debug_frame = all-ones
+    const cieSentinel = isDebugFrame ? (extendedLength ? 0xffffffffffffffff : 0xffffffff) : 0;
+    const isCIE = idField === cieSentinel;
+
+    if (isCIE) {
       const cie = parseCIE(view, pos, recordEnd, recordStart, totalRecordSize, le, is64, machine);
       cies.push(cie);
       cieMap.set(recordStart, cie);
     } else {
-      // FDE — CIE pointer is relative backward offset from the CIE_pointer field
-      const ciePointerFieldOff = contentStart;
-      const cieOff = ciePointerFieldOff - idField;
+      // FDE — resolve CIE offset
+      let cieOff: number;
+      if (isDebugFrame) {
+        // .debug_frame: CIE pointer is an absolute section offset
+        cieOff = idField;
+      } else {
+        // .eh_frame: CIE pointer is a relative backward offset from the CIE_pointer field
+        cieOff = contentStart - idField;
+      }
       const cie = cieMap.get(cieOff);
 
       const fde = parseFDE(
@@ -1197,12 +1216,13 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
   }
 
   // ── Parse ─────────────────────────────────────────────────────────────────
-  const { cies, fdes } = parseEhFrameSection(
+  const { cies, fdes } = parseCfiSection(
     r,
     ehFrameFileOffset,
     ehFrameSize,
     ehFrameVaddr,
-    machine
+    machine,
+    false
   );
 
   let hdr: EhFrameHdr | null = null;
@@ -1217,6 +1237,32 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
     sectionFileOffset: ehFrameFileOffset,
     sectionVaddr: ehFrameVaddr,
     hdrSectionFileOffset: hdrFileOffset,
+  };
+}
+
+export function parseDebugFrame(elf: ELFFile, r: Reader): EhFrameData | null {
+  const shs = elf.sectionHeaders;
+  const machine = elf.header.machine;
+
+  const debugFrameSh = shs.find((s) => s.name === ".debug_frame");
+  if (!debugFrameSh || debugFrameSh.size === 0) return null;
+
+  const { cies, fdes } = parseCfiSection(
+    r,
+    debugFrameSh.offset,
+    debugFrameSh.size,
+    debugFrameSh.addr,
+    machine,
+    true
+  );
+
+  return {
+    cies,
+    fdes,
+    hdr: null, // .debug_frame has no _hdr companion
+    sectionFileOffset: debugFrameSh.offset,
+    sectionVaddr: debugFrameSh.addr,
+    hdrSectionFileOffset: null,
   };
 }
 
