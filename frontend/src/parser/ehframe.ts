@@ -11,7 +11,6 @@ import {
   type EhFrameHdr,
   type EhFrameHdrEntry,
   type EhFrameData,
-  type SectionHeader,
   type ProgramHeader,
   type ELFFile,
   ELFMachine,
@@ -1107,32 +1106,63 @@ function parseEhFrameHdrSection(
   return { version, ehFramePtrEnc, fdeCountEnc, tableEnc, ehFramePtr, fdeCount, table };
 }
 
+// ─── Virtual address → file offset helper ────────────────────────────────────
+
+/** Resolve a virtual address to a file offset via PT_LOAD segments. Returns null on failure. */
+function vaddrToFileOffset(va: bigint, phs: ProgramHeader[]): number | null {
+  for (const ph of phs) {
+    if (ph.type !== PHType.Load) continue;
+    if (va >= ph.vaddr && va < ph.vaddr + BigInt(ph.memsz)) {
+      const off = Number(va - ph.vaddr);
+      // Ensure it falls within the file-backed portion
+      if (off < ph.filesz) return ph.offset + off;
+    }
+  }
+  return null;
+}
+
+/**
+ * Estimate the maximum size of .eh_frame from its start address.
+ * Uses the containing LOAD segment's file-backed range as an upper bound,
+ * then the parser's terminator detection (length=0) handles the actual end.
+ */
+function estimateEhFrameSize(
+  ehFrameFileOffset: number,
+  phs: ProgramHeader[],
+  fileSize: number
+): number {
+  for (const ph of phs) {
+    if (ph.type !== PHType.Load) continue;
+    const segStart = ph.offset;
+    const segEnd = ph.offset + ph.filesz;
+    if (ehFrameFileOffset >= segStart && ehFrameFileOffset < segEnd) {
+      return segEnd - ehFrameFileOffset;
+    }
+  }
+  // Fallback: rest of file
+  return fileSize - ehFrameFileOffset;
+}
+
 // ─── Public entry point ──────────────────────────────────────────────────────
 
 export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
   const shs = elf.sectionHeaders;
   const phs = elf.programHeaders;
   const machine = elf.header.machine;
+  const fileSize = r.view.byteLength;
 
-  // Find .eh_frame section
-  const ehFrameSh = shs.find((s) => s.name === ".eh_frame");
-  if (!ehFrameSh || ehFrameSh.size === 0) return null;
-
-  // Find .eh_frame_hdr section (or PT_GNU_EH_FRAME segment)
-  const ehFrameHdrSh: SectionHeader | undefined = shs.find((s) => s.name === ".eh_frame_hdr");
+  // ── Locate .eh_frame_hdr ──────────────────────────────────────────────────
   let hdrFileOffset: number | null = null;
   let hdrVaddr = 0n;
   let hdrSize = 0;
 
+  const ehFrameHdrSh = shs.find((s) => s.name === ".eh_frame_hdr");
   if (ehFrameHdrSh && ehFrameHdrSh.size > 0) {
     hdrFileOffset = ehFrameHdrSh.offset;
     hdrVaddr = ehFrameHdrSh.addr;
     hdrSize = ehFrameHdrSh.size;
   } else {
-    // Fall back to PT_GNU_EH_FRAME program header
-    const ehFrameHdrPh: ProgramHeader | undefined = phs.find(
-      (p) => p.type === PHType.GnuEhFrame
-    );
+    const ehFrameHdrPh = phs.find((p) => p.type === PHType.GnuEhFrame);
     if (ehFrameHdrPh && ehFrameHdrPh.filesz > 0) {
       hdrFileOffset = ehFrameHdrPh.offset;
       hdrVaddr = ehFrameHdrPh.vaddr;
@@ -1140,11 +1170,38 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
     }
   }
 
+  // ── Locate .eh_frame ──────────────────────────────────────────────────────
+  let ehFrameFileOffset: number;
+  let ehFrameVaddr: bigint;
+  let ehFrameSize: number;
+
+  const ehFrameSh = shs.find((s) => s.name === ".eh_frame");
+  if (ehFrameSh && ehFrameSh.size > 0) {
+    // Prefer section header (exact size)
+    ehFrameFileOffset = ehFrameSh.offset;
+    ehFrameVaddr = ehFrameSh.addr;
+    ehFrameSize = ehFrameSh.size;
+  } else if (hdrFileOffset !== null) {
+    // Fallback: parse .eh_frame_hdr to get eh_frame_ptr, then resolve via LOAD segments
+    const hdr = parseEhFrameHdrSection(r, hdrFileOffset, hdrSize, hdrVaddr);
+    if (!hdr) return null;
+
+    const fo = vaddrToFileOffset(hdr.ehFramePtr, phs);
+    if (fo === null) return null;
+
+    ehFrameFileOffset = fo;
+    ehFrameVaddr = hdr.ehFramePtr;
+    ehFrameSize = estimateEhFrameSize(fo, phs, fileSize);
+  } else {
+    return null;
+  }
+
+  // ── Parse ─────────────────────────────────────────────────────────────────
   const { cies, fdes } = parseEhFrameSection(
     r,
-    ehFrameSh.offset,
-    ehFrameSh.size,
-    ehFrameSh.addr,
+    ehFrameFileOffset,
+    ehFrameSize,
+    ehFrameVaddr,
     machine
   );
 
@@ -1157,8 +1214,8 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
     cies,
     fdes,
     hdr,
-    sectionFileOffset: ehFrameSh.offset,
-    sectionVaddr: ehFrameSh.addr,
+    sectionFileOffset: ehFrameFileOffset,
+    sectionVaddr: ehFrameVaddr,
     hdrSectionFileOffset: hdrFileOffset,
   };
 }
