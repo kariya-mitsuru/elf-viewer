@@ -117,10 +117,11 @@ export class TabManager {
         this.onContextMenu?.(tab.id, e.clientX, e.clientY);
       });
 
+      tabEl.addEventListener("click", () => this.activate(tab.id));
+
       const label = document.createElement("span");
       label.className = "tab-label";
       label.textContent = tab.label;
-      label.addEventListener("click", () => this.activate(tab.id));
       tabEl.appendChild(label);
 
       if (tab.closeable) {
