@@ -483,6 +483,7 @@ export interface ELFFile {
   hashTables: HashTable[]; // from DT_HASH dynamic entry (.hash)
   gnuHashTable: GnuHashTable | null; // from DT_GNU_HASH (.gnu.hash)
   ehFrame: EhFrameData | null; // from .eh_frame / .eh_frame_hdr
+  debugFrame: EhFrameData | null; // from .debug_frame
   // Raw bytes (kept for future hex-dump use)
   raw: Uint8Array;
 }

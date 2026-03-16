@@ -284,9 +284,25 @@ export function renderEhFrame(container: HTMLElement, elf: ELFFile): void {
   });
 
   if (tabs.length === 1) {
-    // No sub-tabs needed
     tabs[0].render(container);
   } else {
     createSubTabs(container, tabs);
   }
+}
+
+export function renderDebugFrame(container: HTMLElement, elf: ELFFile): void {
+  const data = elf.debugFrame;
+  container.innerHTML = "";
+
+  if (!data) {
+    container.innerHTML = '<h2 class="view-title">.debug_frame</h2>';
+    appendEmptyMessage(container, "No .debug_frame section found");
+    return;
+  }
+
+  container.innerHTML = `<h2 class="view-title">.debug_frame (${data.cies.length} CIE, ${data.fdes.length} FDE)</h2>`;
+
+  const is64 = elf.header.class === 2;
+  const machine = elf.header.machine as number;
+  renderRecords(container, data, machine, is64);
 }

@@ -50,7 +50,7 @@ import {
   type GnuHashTable,
 } from "./types.ts";
 import { Reader } from "./reader.ts";
-import { parseEhFrame } from "./ehframe.ts";
+import { parseEhFrame, parseDebugFrame } from "./ehframe.ts";
 
 const decoder = new TextDecoder();
 
@@ -1191,11 +1191,13 @@ export function parseELF(bytes: Uint8Array): ELFFile {
     hashTables,
     gnuHashTable,
     ehFrame: null,
+    debugFrame: null,
     raw: bytes,
   };
 
-  // Parse .eh_frame / .eh_frame_hdr (needs the full ELFFile for section lookup)
+  // Parse .eh_frame / .eh_frame_hdr and .debug_frame
   elfFile.ehFrame = parseEhFrame(elfFile, r);
+  elfFile.debugFrame = parseDebugFrame(elfFile, r);
 
   return elfFile;
 }
