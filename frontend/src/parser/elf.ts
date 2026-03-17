@@ -449,13 +449,12 @@ function parseSymbols(
 // ─── Relocations ─────────────────────────────────────────────────────────────
 
 function parseRelTable(
-  r: Reader,
+  c: Cursor,
   count: number,
   isRela: boolean,
   syms: Symbol[]
 ): RelocationEntry[] {
   const entries: RelocationEntry[] = [];
-  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
     let offset: bigint,
@@ -490,11 +489,10 @@ function parseRelTable(
   return entries;
 }
 
-function parseRelrTable(r: Reader, count: number, entSize: number): RelocationEntry[] {
+function parseRelrTable(c: Cursor, count: number, entSize: number): RelocationEntry[] {
   const wordBits = entSize * 8;
   let offset = 0n;
   const entries: RelocationEntry[] = [];
-  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
     const w = c.is64 ? c.u64() : BigInt(c.u32());
@@ -548,7 +546,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym: false,
-        entries: parseRelrTable(data, count, wordSize),
+        entries: parseRelrTable(data.cursor(0), count, wordSize),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
@@ -569,7 +567,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym,
-        entries: parseRelTable(data, count, isRela, syms),
+        entries: parseRelTable(data.cursor(0), count, isRela, syms),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
@@ -709,7 +707,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: sectionName,
       usesDynSym: true,
-      entries: parseRelTable(data, count, isRela, dynSyms),
+      entries: parseRelTable(data.cursor(0), count, isRela, dynSyms),
       fileOffset: fileOff,
       byteSize,
     });
@@ -747,7 +745,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: ".relr.dyn",
       usesDynSym: false,
-      entries: parseRelrTable(data, count, wordSize),
+      entries: parseRelrTable(data.cursor(0), count, wordSize),
       fileOffset: fileOff,
       byteSize,
     });
