@@ -104,6 +104,32 @@ function addrSize(is64: boolean): number {
   return is64 ? 8 : 4;
 }
 
+/** R_*_RELATIVE relocation type for the given architecture (used by RELR). */
+function relativeRelType(machine: ELFMachine): number {
+  switch (machine) {
+    case ELFMachine.AArch64:
+      return 1027; // R_AARCH64_RELATIVE
+    case ELFMachine.ARM:
+      return 23; // R_ARM_RELATIVE
+    case ELFMachine.X86:
+      return 8; // R_386_RELATIVE
+    case ELFMachine.X86_64:
+      return 8; // R_X86_64_RELATIVE
+    case ELFMachine.PPC:
+      return 22; // R_PPC_RELATIVE
+    case ELFMachine.PPC64:
+      return 22; // R_PPC64_RELATIVE
+    case ELFMachine.RISC_V:
+      return 3; // R_RISCV_RELATIVE
+    case ELFMachine.S390:
+      return 12; // R_390_RELATIVE
+    case ELFMachine.LoongArch:
+      return 3; // R_LARCH_RELATIVE
+    default:
+      return 0;
+  }
+}
+
 // ─── ELF header ──────────────────────────────────────────────────────────────
 
 const ELF_MAGIC = [0x7f, 0x45, 0x4c, 0x46]; // \x7fELF
@@ -490,7 +516,12 @@ function parseRelTable(
   return entries;
 }
 
-function parseRelrTable(c: Cursor, count: number, entSize: number): RelocationEntry[] {
+function parseRelrTable(
+  c: Cursor,
+  count: number,
+  entSize: number,
+  relType: number
+): RelocationEntry[] {
   const wordBits = entSize * 8;
   let offset = 0n;
   const entries: RelocationEntry[] = [];
@@ -500,12 +531,16 @@ function parseRelrTable(c: Cursor, count: number, entSize: number): RelocationEn
 
     if ((w & 1n) === 0n) {
       offset = w;
-      entries.push({ offset, symIndex: 0, symName: "", symValue: 0n, type: 8, addend: null });
+      entries.push({
+        offset, symIndex: 0, symName: "", symValue: 0n, type: relType, addend: null,
+      });
     } else {
       for (let bit = 1; bit < wordBits; bit++) {
         offset += BigInt(entSize);
         if ((w >> BigInt(bit)) & 1n) {
-          entries.push({ offset, symIndex: 0, symName: "", symValue: 0n, type: 8, addend: null });
+          entries.push({
+            offset, symIndex: 0, symName: "", symValue: 0n, type: relType, addend: null,
+          });
         }
       }
     }
@@ -524,7 +559,8 @@ function parseRelocations(
   shs: SectionHeader[],
   fc: Cursor,
   dynSyms: Symbol[],
-  allSyms: Symbol[]
+  allSyms: Symbol[],
+  machine: ELFMachine
 ): RelocationSection[] {
   const sections: RelocationSection[] = [];
 
@@ -547,7 +583,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym: false,
-        entries: parseRelrTable(data, count, wordSize),
+        entries: parseRelrTable(data, count, wordSize, relativeRelType(machine)),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
@@ -660,7 +696,8 @@ function parseRelocationsFromDynamic(
   get: (tag: DynTag) => bigint | null,
   dynSyms: Symbol[],
   phs: ProgramHeader[],
-  fc: Cursor
+  fc: Cursor,
+  machine: ELFMachine
 ): RelocationSection[] {
   const sections: RelocationSection[] = [];
 
@@ -743,7 +780,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: ".relr.dyn",
       usesDynSym: false,
-      entries: parseRelrTable(data, count, wordSize),
+      entries: parseRelrTable(data, count, wordSize, relativeRelType(machine)),
       fileOffset: fileOff,
       byteSize,
     });
@@ -1129,9 +1166,9 @@ export function parseELF(bytes: Uint8Array): ELFFile {
   for (const ht of hashTables) ht.symNames = dynSymbols.map((s) => s.name);
   if (gnuHashTable !== null) gnuHashTable.symNames = dynSymbols.map((s) => s.name);
 
-  let relocs = parseRelocations(shs, fc, dynSymbols, symbols);
+  let relocs = parseRelocations(shs, fc, dynSymbols, symbols, header.machine);
   if (relocs.length === 0 && dynamics.length > 0) {
-    relocs = parseRelocationsFromDynamic(getDyn, dynSymbols, phs, fc);
+    relocs = parseRelocationsFromDynamic(getDyn, dynSymbols, phs, fc, header.machine);
   }
   const notes = parseNotes(shs, fc, phs);
   const versionInfo = parseVersionInfo(getDyn, dynSymbols.length, phs, fc, dynStrtab);
