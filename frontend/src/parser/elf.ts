@@ -818,72 +818,84 @@ function parseVerSymTable(c: Cursor, count: number): number[] {
   return versions;
 }
 
+// Verneed: version(2) cnt(2) file(4) aux(4) next(4) = 16 bytes
+// Vernaux: hash(4) flags(2) other(2) name(4) next(4) = 16 bytes
+const VERNEED_SIZE = 16;
+const VERNAUX_SIZE = 16;
+
 function parseVerNeedTable(
-  r: Reader,
+  c: Cursor,
   strtab: StrTabFn,
   count: number
 ): { needs: VersionNeed[]; byteSize: number } {
   const needs: VersionNeed[] = [];
-  let off = 0;
-  let maxOff = 0;
-  for (let i = 0; i < count && off + 16 <= r.view.byteLength; i++) {
-    maxOff = Math.max(maxOff, off + 16);
-    const cnt = r.u16(off + 2);
-    const fileIdx = r.u32(off + 4);
-    const auxOff = r.u32(off + 8);
-    const next = r.u32(off + 12);
+  for (let i = 0; i < count && c.remaining >= VERNEED_SIZE; i++) {
+    const version = c.u16();
+    if (version !== 1)
+      throw new ParseError(`VERNEED: unsupported version ${version} (expected 1)`);
+    const cnt = c.u16();
+    const fileIdx = c.u32();
+    const auxOff = c.u32();
+    const next = c.u32();
+    if (auxOff !== VERNEED_SIZE)
+      throw new ParseError(`VERNEED: unexpected vn_aux ${auxOff} (expected ${VERNEED_SIZE})`);
     const file = strtab(fileIdx);
     const aux: VersionNeedAux[] = [];
-    let aoff = off + auxOff;
-    for (let j = 0; j < cnt && aoff + 16 <= r.view.byteLength; j++) {
-      maxOff = Math.max(maxOff, aoff + 16);
-      const hash = r.u32(aoff);
-      const flags = r.u16(aoff + 4);
-      const other = r.u16(aoff + 6);
-      const nameIdx = r.u32(aoff + 8);
-      const anext = r.u32(aoff + 12);
+    for (let j = 0; j < cnt && c.remaining >= VERNAUX_SIZE; j++) {
+      const hash = c.u32();
+      const flags = c.u16();
+      const other = c.u16();
+      const nameIdx = c.u32();
+      const anext = c.u32();
       aux.push({ hash, flags, other, name: strtab(nameIdx) });
-      if (anext === 0) break;
-      aoff += anext;
+      if (j < cnt - 1 && anext !== VERNAUX_SIZE)
+        throw new ParseError(`VERNAUX: unexpected vna_next ${anext} (expected ${VERNAUX_SIZE})`);
     }
     needs.push({ file, cnt, aux });
-    if (next === 0) break;
-    off += next;
+    const expectedNext = VERNEED_SIZE + cnt * VERNAUX_SIZE;
+    if (i < count - 1 && next !== expectedNext)
+      throw new ParseError(`VERNEED: unexpected vn_next ${next} (expected ${expectedNext})`);
   }
-  return { needs, byteSize: maxOff };
+  return { needs, byteSize: c.pos };
 }
 
+// Verdef: version(2) flags(2) ndx(2) cnt(2) hash(4) aux(4) next(4) = 20 bytes
+// Verdaux: name(4) next(4) = 8 bytes
+const VERDEF_SIZE = 20;
+const VERDAUX_SIZE = 8;
+
 function parseVerDefTable(
-  r: Reader,
+  c: Cursor,
   strtab: StrTabFn,
   count: number
 ): { defs: VersionDef[]; byteSize: number } {
   const defs: VersionDef[] = [];
-  let off = 0;
-  let maxOff = 0;
-  for (let i = 0; i < count && off + 20 <= r.view.byteLength; i++) {
-    maxOff = Math.max(maxOff, off + 20);
-    const flags = r.u16(off + 2);
-    const ndx = r.u16(off + 4);
-    const cnt = r.u16(off + 6);
-    const hash = r.u32(off + 8);
-    const auxOff = r.u32(off + 12);
-    const next = r.u32(off + 16);
+  for (let i = 0; i < count && c.remaining >= VERDEF_SIZE; i++) {
+    const version = c.u16();
+    if (version !== 1)
+      throw new ParseError(`VERDEF: unsupported version ${version} (expected 1)`);
+    const flags = c.u16();
+    const ndx = c.u16();
+    const cnt = c.u16();
+    const hash = c.u32();
+    const auxOff = c.u32();
+    const next = c.u32();
+    if (auxOff !== VERDEF_SIZE)
+      throw new ParseError(`VERDEF: unexpected vd_aux ${auxOff} (expected ${VERDEF_SIZE})`);
     const names: string[] = [];
-    let aoff = off + auxOff;
-    for (let j = 0; j < cnt && aoff + 8 <= r.view.byteLength; j++) {
-      maxOff = Math.max(maxOff, aoff + 8);
-      const nameIdx = r.u32(aoff);
-      const anext = r.u32(aoff + 4);
+    for (let j = 0; j < cnt && c.remaining >= VERDAUX_SIZE; j++) {
+      const nameIdx = c.u32();
+      const anext = c.u32();
       names.push(strtab(nameIdx));
-      if (anext === 0) break;
-      aoff += anext;
+      if (j < cnt - 1 && anext !== VERDAUX_SIZE)
+        throw new ParseError(`VERDAUX: unexpected vda_next ${anext} (expected ${VERDAUX_SIZE})`);
     }
     defs.push({ flags, ndx, hash, names });
-    if (next === 0) break;
-    off += next;
+    const expectedNext = VERDEF_SIZE + cnt * VERDAUX_SIZE;
+    if (i < count - 1 && next !== expectedNext)
+      throw new ParseError(`VERDEF: unexpected vd_next ${next} (expected ${expectedNext})`);
   }
-  return { defs, byteSize: maxOff };
+  return { defs, byteSize: c.pos };
 }
 
 // ─── Version info ─────────────────────────────────────────────────────────────
@@ -929,7 +941,7 @@ function parseVersionInfo(
   if (verNeedOff !== null) {
     const count = verNeedNum !== null ? Number(verNeedNum) : 0;
     const { needs, byteSize } = parseVerNeedTable(
-      r.slice(verNeedOff, r.view.byteLength - verNeedOff),
+      r.cursor(verNeedOff, r.view.byteLength - verNeedOff),
       strtab,
       count
     );
@@ -947,7 +959,7 @@ function parseVersionInfo(
   if (verDefOff !== null) {
     const count = verDefNum !== null ? Number(verDefNum) : 0;
     const { defs, byteSize } = parseVerDefTable(
-      r.slice(verDefOff, r.view.byteLength - verDefOff),
+      r.cursor(verDefOff, r.view.byteLength - verDefOff),
       strtab,
       count
     );
