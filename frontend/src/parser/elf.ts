@@ -147,51 +147,31 @@ function parseHeader(raw: Uint8Array): [ELFHeader, Cursor] {
 
   const le = data === ELFData.LSB;
   const is64 = cls === ELFClass.ELF64;
-  const osabi = raw[7] as ELFOSABI;
-  const abiVersion = raw[8];
   const c = new Cursor(new DataView(raw.buffer, raw.byteOffset, raw.byteLength), le, is64, 16);
 
-  // File header (offset 16): type(2) machine(2) e_version(4) then pointer-sized fields
-  const type = c.u16() as ELFType;
-  const machine = c.u16() as ELFMachine;
-  const version = c.u32();
+  // File header (offset 16): fields read sequentially via Cursor
+  const header: ELFHeader = {
+    class: cls,
+    data,
+    osabi: raw[7] as ELFOSABI,
+    abiVersion: raw[8],
+    type: c.u16() as ELFType,
+    machine: c.u16() as ELFMachine,
+    version: c.u32(),
+    entryPoint: c.addr(),
+    phOffset: is64 ? safeNum(c.u64(), "e_phoff") : c.u32(),
+    shOffset: is64 ? safeNum(c.u64(), "e_shoff") : c.u32(),
+    flags: c.u32(),
+    ehSize: c.u16(),
+    phEntSize: c.u16(),
+    phNum: c.u16(),
+    shEntSize: c.u16(),
+    shNum: c.u16(),
+    shStrNdx: c.u16(),
+  };
 
-  const entryPoint = c.addr();
-  const phOffset = is64 ? safeNum(c.u64(), "e_phoff") : c.u32();
-  const shOffset = is64 ? safeNum(c.u64(), "e_shoff") : c.u32();
-  const flags = c.u32();
-  const ehSize = c.u16();
-  const phEntSize = c.u16();
-  const phNum = c.u16();
-  const shEntSize = c.u16();
-  const shNum = c.u16();
-  const shStrNdx = c.u16();
-
-  // Reset cursor to start for downstream use as the file-level handle.
   c.pos = 0;
-
-  return [
-    {
-      class: cls,
-      data,
-      version,
-      osabi,
-      abiVersion,
-      type,
-      machine,
-      entryPoint,
-      phOffset,
-      shOffset,
-      flags,
-      ehSize,
-      phEntSize,
-      phNum,
-      shEntSize,
-      shNum,
-      shStrNdx,
-    },
-    c,
-  ];
+  return [header, c];
 }
 
 // ─── Program headers ──────────────────────────────────────────────────────────
