@@ -1035,26 +1035,16 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
     buckets.push(c.u32());
   }
 
-  const chainOff = c.pos;
-
-  // Determine total hashed symbol count by following each bucket's chain to its end.
-  let endIdx = symoffset;
+  // Hash values are contiguous, ordered by bucket (symbols are sorted by
+  // gnu_hash % nbuckets). Walk buckets in order, following each chain.
+  const hashValues: number[] = [];
   for (const start of buckets) {
     if (start === 0) continue;
-    c.pos = chainOff + (start - symoffset) * 4;
-    let idx = start;
     while (c.remaining >= 4) {
-      idx++;
-      if (c.u32() & 1) break;
+      const v = c.u32();
+      hashValues.push(v);
+      if (v & 1) break; // end-of-chain
     }
-    if (idx > endIdx) endIdx = idx;
-  }
-
-  // Read all hash values sequentially.
-  const hashValues: number[] = [];
-  c.pos = chainOff;
-  for (let i = 0, n = endIdx - symoffset; i < n; i++) {
-    hashValues.push(c.u32());
   }
 
   const byteSize = 16 + bloomSize * wordSize + nbuckets * 4 + hashValues.length * 4;
