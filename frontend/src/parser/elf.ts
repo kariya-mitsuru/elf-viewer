@@ -49,7 +49,7 @@ import {
   type HashTable,
   type GnuHashTable,
 } from "./types.ts";
-import { Cursor } from "./reader.ts";
+import { Cursor, ParseError } from "./reader.ts";
 import { parseEhFrame, parseDebugFrame } from "./ehframe.ts";
 
 const decoder = new TextDecoder();
@@ -134,8 +134,8 @@ function relativeRelType(machine: ELFMachine): number {
 
 const ELF_MAGIC = [0x7f, 0x45, 0x4c, 0x46]; // \x7fELF
 
-/** Thrown when the input is not a valid or supported ELF binary. */
-export class ParseError extends Error {}
+// Re-export ParseError (defined in reader.ts to avoid circular dependency)
+export { ParseError } from "./reader.ts";
 
 /**
  * Safely converts a bigint ELF64 field to number.
@@ -214,11 +214,7 @@ function parseProgramHeaders(fc: Cursor, h: ELFHeader): ProgramHeader[] {
     throw new ParseError(`Invalid e_phentsize: expected ${expectedPhEntSize}, got ${h.phEntSize}`);
   const phs: ProgramHeader[] = [];
   const base = h.phOffset;
-
-  if (base + h.phNum * h.phEntSize > fc.length)
-    throw new ParseError("Program header table extends beyond end of file");
-
-  const c = fc.cursor(base, h.phNum * h.phEntSize);
+  const c = fc.cursor(base, h.phNum * h.phEntSize, "Program header table");
   for (let i = 0; i < h.phNum; i++) {
     if (c.is64) {
       phs.push({
@@ -274,10 +270,7 @@ function parseSectionHeaders(fc: Cursor, h: ELFHeader): SectionHeader[] {
 
   // First pass: read raw entries without names
   const entries: RawSectionEntry[] = [];
-  if (base + h.shNum * h.shEntSize > fc.length)
-    throw new ParseError("Section header table extends beyond end of file");
-
-  const c = fc.cursor(base, h.shNum * h.shEntSize);
+  const c = fc.cursor(base, h.shNum * h.shEntSize, "Section header table");
   for (let i = 0; i < h.shNum; i++) {
     if (c.is64) {
       entries.push({
@@ -637,8 +630,6 @@ function parseDynamic(
   const dynPh = phs.find((p) => p.type === PHType.Dynamic);
   if (!dynPh) return { entries: [], strtab: emptyStrTab };
   const { offset: off, filesz: sz } = dynPh;
-  if (off + sz > fc.length)
-    throw new ParseError(`PT_DYNAMIC [${off}..+${sz}] exceeds file size (${fc.length})`);
   const entSize = dynEntSize(fc.is64);
   if (sz % entSize !== 0)
     throw new ParseError(`PT_DYNAMIC size ${sz} is not a multiple of entsize ${entSize}`);
@@ -647,7 +638,7 @@ function parseDynamic(
   let strtabOff: number | null = null;
   let strtabSz: bigint | null = null;
 
-  const c = fc.cursor(off, sz);
+  const c = fc.cursor(off, sz, "PT_DYNAMIC");
   while (c.remaining >= entSize) {
     const tag = (c.is64 ? safeNum(c.i64(), "DynTag") : c.i32()) as DynTag;
     const value = c.is64 ? c.u64() : BigInt(c.u32());
@@ -692,12 +683,7 @@ function parseDynSymbolsFromDynamic(
 
   const entSize = symEntSize(fc.is64);
   const totalSize = count * entSize;
-  if (symtabOff + totalSize > fc.length)
-    throw new ParseError(
-      `Dynamic symbol table [${symtabOff}..+${totalSize}] exceeds file size (${fc.length})`
-    );
-
-  return parseSymbolEntries(fc.cursor(symtabOff, totalSize), count, strtab, []);
+  return parseSymbolEntries(fc.cursor(symtabOff, totalSize, "Dynamic symbol table"), count, strtab, []);
 }
 
 function parseRelocationsFromDynamic(
@@ -728,11 +714,9 @@ function parseRelocationsFromDynamic(
         `${sectionName}: entsize ${entSz} does not match expected ${expectedEntSz}`
       );
     const fileOff = vaddrToFileOffset(va, phs, sectionName)!;
-    if (BigInt(fileOff) + sz > BigInt(fc.length))
-      throw new ParseError(`${sectionName}: [${fileOff}..+${sz}] exceeds file size (${fc.length})`);
     const byteSize = Number(sz);
     return {
-      data: fc.cursor(fileOff, byteSize),
+      data: fc.cursor(fileOff, byteSize, sectionName),
       count: byteSize / expectedEntSz,
       fileOff,
       byteSize,
