@@ -766,8 +766,7 @@ function align4(n: number): number {
 function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note[] {
   const notes: Note[] = [];
 
-  function parseNoteData(nr: Reader, sectionName: string): void {
-    const c = new Cursor(nr.view, nr.le, nr.is64);
+  function parseNoteData(c: Cursor, sectionName: string): void {
     while (c.remaining >= 12) {
       const namesz = c.u32();
       const descsz = c.u32();
@@ -779,7 +778,11 @@ function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note
           : "";
       c.skip(align4(namesz));
       if (c.remaining < descsz) break;
-      const desc = nr.slice(c.pos, descsz);
+      const desc = new Reader(
+        new DataView(c.view.buffer, c.view.byteOffset + c.pos, descsz),
+        c.le,
+        c.is64
+      );
       c.skip(align4(descsz));
       notes.push({ sectionName, name, type, desc });
     }
@@ -788,18 +791,16 @@ function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note
   // From note sections
   for (const sh of shs) {
     if (sh.type !== SHType.Note) continue;
-    const d = sectionData(sh, r);
-    if (d) parseNoteData(d, sh.name);
+    if (sh.size === 0) continue;
+    parseNoteData(r.cursor(sh.offset, sh.size), sh.name);
   }
 
   // From PT_NOTE segments (for stripped binaries without section headers)
   if (shs.length === 0) {
     for (const ph of phs) {
       if (ph.type !== PHType.Note) continue;
-      const off = ph.offset,
-        sz = ph.filesz;
-      if (off + sz <= r.view.byteLength) {
-        parseNoteData(r.slice(off, sz), "PT_NOTE");
+      if (ph.offset + ph.filesz <= r.view.byteLength) {
+        parseNoteData(r.cursor(ph.offset, ph.filesz), "PT_NOTE");
       }
     }
   }
