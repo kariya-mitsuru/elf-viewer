@@ -941,7 +941,7 @@ function parseVersionInfo(
   if (verNeedOff !== null) {
     const count = verNeedNum !== null ? Number(verNeedNum) : 0;
     const { needs, byteSize } = parseVerNeedTable(
-      fc.cursor(verNeedOff, fc.length - verNeedOff),
+      fc.cursor(verNeedOff),
       strtab,
       count
     );
@@ -959,7 +959,7 @@ function parseVersionInfo(
   if (verDefOff !== null) {
     const count = verDefNum !== null ? Number(verDefNum) : 0;
     const { defs, byteSize } = parseVerDefTable(
-      fc.cursor(verDefOff, fc.length - verDefOff),
+      fc.cursor(verDefOff),
       strtab,
       count
     );
