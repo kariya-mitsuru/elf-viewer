@@ -1047,8 +1047,6 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
     }
   }
 
-  const byteSize = 16 + bloomSize * wordSize + nbuckets * 4 + hashValues.length * 4;
-
   return {
     sectionName: ".gnu.hash",
     shIndex: -1,
@@ -1062,7 +1060,7 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
     hashValues,
     symNames: [],
     fileOffset,
-    byteSize,
+    byteSize: c.pos,
   };
 }
 
