@@ -674,7 +674,7 @@ function parseRelocationsFromDynamic(
     entSz: bigint | null,
     expectedEntSz: number,
     sectionName: string
-  ): { data: Reader; count: number; fileOff: number; byteSize: number } | null {
+  ): { data: Cursor; count: number; fileOff: number; byteSize: number } | null {
     if (va === null && sz === null && entSz === null) return null;
     if (va === null || sz === null || entSz === null)
       throw new ParseError(
@@ -690,7 +690,7 @@ function parseRelocationsFromDynamic(
         `${sectionName}: [${fileOff}..+${sz}] exceeds file size (${r.view.byteLength})`
       );
     const byteSize = Number(sz);
-    return { data: r.slice(fileOff, byteSize), count: byteSize / expectedEntSz, fileOff, byteSize };
+    return { data: r.cursor(fileOff, byteSize), count: byteSize / expectedEntSz, fileOff, byteSize };
   }
 
   function parseTable(
@@ -707,7 +707,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: sectionName,
       usesDynSym: true,
-      entries: parseRelTable(data.cursor(0), count, isRela, dynSyms),
+      entries: parseRelTable(data, count, isRela, dynSyms),
       fileOffset: fileOff,
       byteSize,
     });
@@ -745,7 +745,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: ".relr.dyn",
       usesDynSym: false,
-      entries: parseRelrTable(data.cursor(0), count, wordSize),
+      entries: parseRelrTable(data, count, wordSize),
       fileOffset: fileOff,
       byteSize,
     });
