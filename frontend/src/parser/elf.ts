@@ -845,7 +845,7 @@ function parseNotes(shs: SectionHeader[], fc: Cursor, phs: ProgramHeader[]): Not
   return notes;
 }
 
-// ─── Version info ─────────────────────────────────────────────────────────────
+// ─── Version table parsers ────────────────────────────────────────────────────
 
 function parseVerSymTable(c: Cursor, count: number): number[] {
   const versions: number[] = [];
