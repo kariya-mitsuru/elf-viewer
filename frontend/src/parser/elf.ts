@@ -1037,29 +1037,23 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
 
   const chainOff = c.pos;
 
-  // Find the highest occupied bucket (start index of the last symbol chain).
-  let maxBucket = 0;
-  for (const b of buckets) {
-    if (b > maxBucket) maxBucket = b;
-  }
-
-  // Follow the chain from maxBucket until the end-of-chain bit (bit 0) is set
-  // to determine how many symbols are hashed.
-  let numHashed = 0;
-  if (maxBucket >= symoffset) {
-    let idx = maxBucket;
-    c.pos = chainOff + (idx - symoffset) * 4;
+  // Determine total hashed symbol count by following each bucket's chain to its end.
+  let endIdx = symoffset;
+  for (const start of buckets) {
+    if (start === 0) continue;
+    c.pos = chainOff + (start - symoffset) * 4;
+    let idx = start;
     while (c.remaining >= 4) {
-      const entry = c.u32();
       idx++;
-      if (entry & 1) break;
+      if (c.u32() & 1) break;
     }
-    numHashed = idx - symoffset;
+    if (idx > endIdx) endIdx = idx;
   }
 
+  // Read all hash values sequentially.
   const hashValues: number[] = [];
   c.pos = chainOff;
-  for (let i = 0; i < numHashed; i++) {
+  for (let i = 0, n = endIdx - symoffset; i < n; i++) {
     hashValues.push(c.u32());
   }
 
