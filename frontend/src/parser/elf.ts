@@ -994,8 +994,15 @@ function parseVersionInfo(
  *   u32  chain[nchain]     — chains[i] = next sym in chain for sym i (0 = end)
  */
 function parseHashTable(c: Cursor, fileOffset: number): HashTable {
+  if (c.remaining < 8) throw new ParseError(".hash: too small for header");
   const nbucket = c.u32();
   const nchain = c.u32();
+
+  const needed = (nbucket + nchain) * 4;
+  if (c.remaining < needed)
+    throw new ParseError(
+      `.hash: need ${needed} bytes for ${nbucket} buckets + ${nchain} chains, only ${c.remaining} available`
+    );
 
   const buckets: number[] = [];
   for (let i = 0; i < nbucket; i++) buckets.push(c.u32());
@@ -1019,11 +1026,19 @@ function parseHashTable(c: Cursor, fileOffset: number): HashTable {
 // ─── GNU Hash table ───────────────────────────────────────────────────────────
 
 function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
+  if (c.remaining < 16) throw new ParseError(".gnu.hash: too small for header");
   const nbuckets = c.u32();
   const symoffset = c.u32();
   const bloomSize = c.u32();
   const bloomShift = c.u32();
   const wordSize = c.is64 ? 8 : 4;
+
+  const bloomBytes = bloomSize * wordSize;
+  const bucketBytes = nbuckets * 4;
+  if (c.remaining < bloomBytes + bucketBytes)
+    throw new ParseError(
+      `.gnu.hash: need ${bloomBytes + bucketBytes} bytes for bloom + buckets, only ${c.remaining} available`
+    );
 
   const bloom: bigint[] = [];
   for (let i = 0; i < bloomSize; i++) {
