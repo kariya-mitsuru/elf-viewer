@@ -49,7 +49,7 @@ import {
   type HashTable,
   type GnuHashTable,
 } from "./types.ts";
-import { Reader } from "./reader.ts";
+import { Reader, Cursor } from "./reader.ts";
 import { parseEhFrame, parseDebugFrame } from "./ehframe.ts";
 
 const decoder = new TextDecoder();
@@ -191,31 +191,31 @@ function parseProgramHeaders(r: Reader, h: ELFHeader): ProgramHeader[] {
   if (base + h.phNum * h.phEntSize > r.view.byteLength)
     throw new ParseError("Program header table extends beyond end of file");
 
+  const c = r.cursor(base, h.phNum * h.phEntSize);
   for (let i = 0; i < h.phNum; i++) {
-    const off = base + i * h.phEntSize;
-    if (r.is64) {
+    if (c.is64) {
       phs.push({
         index: i,
-        type: r.word(off) as PHType,
-        flags: r.word(off + 4),
-        offset: safeNum(r.u64(off + 8), "p_offset"),
-        vaddr: r.u64(off + 16),
-        paddr: r.u64(off + 24),
-        filesz: safeNum(r.u64(off + 32), "p_filesz"),
-        memsz: safeNum(r.u64(off + 40), "p_memsz"),
-        align: safeNum(r.u64(off + 48), "p_align"),
+        type: c.u32() as PHType,
+        flags: c.u32(),
+        offset: safeNum(c.u64(), "p_offset"),
+        vaddr: c.u64(),
+        paddr: c.u64(),
+        filesz: safeNum(c.u64(), "p_filesz"),
+        memsz: safeNum(c.u64(), "p_memsz"),
+        align: safeNum(c.u64(), "p_align"),
       });
     } else {
       phs.push({
         index: i,
-        type: r.word(off) as PHType,
-        offset: r.u32(off + 4),
-        vaddr: BigInt(r.u32(off + 8)),
-        paddr: BigInt(r.u32(off + 12)),
-        filesz: r.u32(off + 16),
-        memsz: r.u32(off + 20),
-        flags: r.word(off + 24),
-        align: r.u32(off + 28),
+        type: c.u32() as PHType,
+        offset: c.u32(),
+        vaddr: BigInt(c.u32()),
+        paddr: BigInt(c.u32()),
+        filesz: c.u32(),
+        memsz: c.u32(),
+        flags: c.u32(),
+        align: c.u32(),
       });
     }
   }
@@ -250,35 +250,35 @@ function parseSectionHeaders(r: Reader, h: ELFHeader): SectionHeader[] {
   if (base + h.shNum * h.shEntSize > r.view.byteLength)
     throw new ParseError("Section header table extends beyond end of file");
 
+  const c = r.cursor(base, h.shNum * h.shEntSize);
   for (let i = 0; i < h.shNum; i++) {
-    const off = base + i * h.shEntSize;
-    if (r.is64) {
+    if (c.is64) {
       entries.push({
         index: i,
-        nameOff: r.word(off),
-        type: r.word(off + 4) as SHType,
-        flags: r.u64(off + 8),
-        addr: r.u64(off + 16),
-        offset: safeNum(r.u64(off + 24), "sh_offset"),
-        size: safeNum(r.u64(off + 32), "sh_size"),
-        link: r.word(off + 40),
-        info: r.word(off + 44),
-        addralign: safeNum(r.u64(off + 48), "sh_addralign"),
-        entsize: safeNum(r.u64(off + 56), "sh_entsize"),
+        nameOff: c.u32(),
+        type: c.u32() as SHType,
+        flags: c.u64(),
+        addr: c.u64(),
+        offset: safeNum(c.u64(), "sh_offset"),
+        size: safeNum(c.u64(), "sh_size"),
+        link: c.u32(),
+        info: c.u32(),
+        addralign: safeNum(c.u64(), "sh_addralign"),
+        entsize: safeNum(c.u64(), "sh_entsize"),
       });
     } else {
       entries.push({
         index: i,
-        nameOff: r.word(off),
-        type: r.word(off + 4) as SHType,
-        flags: BigInt(r.u32(off + 8)),
-        addr: BigInt(r.u32(off + 12)),
-        offset: r.u32(off + 16),
-        size: r.u32(off + 20),
-        link: r.word(off + 24),
-        info: r.word(off + 28),
-        addralign: r.u32(off + 32),
-        entsize: r.u32(off + 36),
+        nameOff: c.u32(),
+        type: c.u32() as SHType,
+        flags: BigInt(c.u32()),
+        addr: BigInt(c.u32()),
+        offset: c.u32(),
+        size: c.u32(),
+        link: c.u32(),
+        info: c.u32(),
+        addralign: c.u32(),
+        entsize: c.u32(),
       });
     }
   }
@@ -360,14 +360,13 @@ function vaddrToFileOffset(
 function parseSymbolEntries(
   r: Reader,
   count: number,
-  entSize: number,
   strtab: StrTabFn,
   shs: SectionHeader[]
 ): Symbol[] {
   const syms: Symbol[] = [];
+  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
-    const off = i * entSize;
     let name = "",
       value = 0n,
       size = 0,
@@ -375,21 +374,23 @@ function parseSymbolEntries(
       other = 0,
       shndx = 0;
 
-    if (r.is64) {
-      const nameIdx = r.u32(off);
-      info = r.u8(off + 4);
-      other = r.u8(off + 5);
-      shndx = r.u16(off + 6);
-      value = r.u64(off + 8);
-      size = safeNum(r.u64(off + 16), "st_size");
+    if (c.is64) {
+      // Elf64_Sym: name(4), info(1), other(1), shndx(2), value(8), size(8)
+      const nameIdx = c.u32();
+      info = c.u8();
+      other = c.u8();
+      shndx = c.u16();
+      value = c.u64();
+      size = safeNum(c.u64(), "st_size");
       name = strtab(nameIdx);
     } else {
-      const nameIdx = r.u32(off);
-      value = BigInt(r.u32(off + 4));
-      size = r.u32(off + 8);
-      info = r.u8(off + 12);
-      other = r.u8(off + 13);
-      shndx = r.u16(off + 14);
+      // Elf32_Sym: name(4), value(4), size(4), info(1), other(1), shndx(2)
+      const nameIdx = c.u32();
+      value = BigInt(c.u32());
+      size = c.u32();
+      info = c.u8();
+      other = c.u8();
+      shndx = c.u16();
       name = strtab(nameIdx);
     }
 
@@ -443,7 +444,7 @@ function parseSymbols(
       `Symbol table size ${data.view.byteLength} is not a multiple of sh_entsize ${entSize}`
     );
   const count = data.view.byteLength / entSize;
-  return parseSymbolEntries(data, count, entSize, strtabData, shs);
+  return parseSymbolEntries(data, count, strtabData, shs);
 }
 
 // ─── Relocations ─────────────────────────────────────────────────────────────
@@ -451,31 +452,28 @@ function parseSymbols(
 function parseRelTable(
   r: Reader,
   count: number,
-  entSize: number,
   isRela: boolean,
   syms: Symbol[]
 ): RelocationEntry[] {
   const entries: RelocationEntry[] = [];
+  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
-    const off = i * entSize;
     let offset: bigint,
       symIdx: number,
       type: number,
       addend: bigint | null = null;
 
-    if (r.is64) {
-      offset = r.u64(off);
-      const info = r.u64(off + 8);
-      if (isRela) addend = r.i64(off + 16);
-      // ELF64: sym=info[63:32], type=info[31:0]
+    if (c.is64) {
+      offset = c.u64();
+      const info = c.u64();
+      if (isRela) addend = c.i64();
       symIdx = Number(info >> 32n);
       type = Number(info & 0xffffffffn);
     } else {
-      offset = BigInt(r.u32(off));
-      const info = r.u32(off + 4);
-      if (isRela) addend = BigInt(r.i32(off + 8));
-      // ELF32: sym=info[31:8], type=info[7:0]
+      offset = BigInt(c.u32());
+      const info = c.u32();
+      if (isRela) addend = BigInt(c.i32());
       symIdx = info >>> 8;
       type = info & 0xff;
     }
@@ -497,9 +495,10 @@ function parseRelrTable(r: Reader, count: number, entSize: number): RelocationEn
   const wordBits = entSize * 8;
   let offset = 0n;
   const entries: RelocationEntry[] = [];
+  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
-    const w = r.is64 ? r.u64(i * entSize) : BigInt(r.u32(i * entSize));
+    const w = c.is64 ? c.u64() : BigInt(c.u32());
 
     if ((w & 1n) === 0n) {
       offset = w;
@@ -571,7 +570,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym,
-        entries: parseRelTable(data, count, entSize, isRela, syms),
+        entries: parseRelTable(data, count, isRela, syms),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
@@ -606,15 +605,10 @@ function parseDynamic(
   let strtabOff: number | null = null;
   let strtabSz: bigint | null = null;
 
-  for (let off = 0; off < data.view.byteLength; off += entSize) {
-    let tag: DynTag, value: bigint;
-    if (r.is64) {
-      tag = safeNum(data.i64(off), "DynTag") as DynTag;
-      value = data.u64(off + 8);
-    } else {
-      tag = data.i32(off) as DynTag;
-      value = BigInt(data.u32(off + 4));
-    }
+  const c = new Cursor(data.view, r.le, r.is64);
+  while (c.remaining >= entSize) {
+    const tag = (c.is64 ? safeNum(c.i64(), "DynTag") : c.i32()) as DynTag;
+    const value = c.is64 ? c.u64() : BigInt(c.u32());
     entries.push({ tag, value, name: null });
     if (tag === DynTag.Null) break;
     if (tag === DynTag.StrTab) strtabOff = vaddrToFileOffset(value, phs, "DT_STRTAB");
@@ -664,7 +658,7 @@ function parseDynSymbolsFromDynamic(
       `Dynamic symbol table [${symtabOff}..+${totalSize}] exceeds file size (${r.view.byteLength})`
     );
 
-  return parseSymbolEntries(r.slice(symtabOff, totalSize), count, entSize, strtab, []);
+  return parseSymbolEntries(r.slice(symtabOff, totalSize), count, strtab, []);
 }
 
 function parseRelocationsFromDynamic(
@@ -716,7 +710,7 @@ function parseRelocationsFromDynamic(
     sections.push({
       name: sectionName,
       usesDynSym: true,
-      entries: parseRelTable(data, count, entSize, isRela, dynSyms),
+      entries: parseRelTable(data, count, isRela, dynSyms),
       fileOffset: fileOff,
       byteSize,
     });
@@ -778,21 +772,20 @@ function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note
   const notes: Note[] = [];
 
   function parseNoteData(nr: Reader, sectionName: string): void {
-    let off = 0;
-    while (off + 12 <= nr.view.byteLength) {
-      const namesz = nr.u32(off);
-      const descsz = nr.u32(off + 4);
-      const type = nr.u32(off + 8);
-      off += 12;
-      if (off + namesz > nr.view.byteLength) break;
+    const c = new Cursor(nr.view, nr.le, nr.is64);
+    while (c.remaining >= 12) {
+      const namesz = c.u32();
+      const descsz = c.u32();
+      const type = c.u32();
+      if (c.remaining < namesz) break;
       const name =
         namesz > 0
-          ? decoder.decode(new Uint8Array(nr.view.buffer, nr.view.byteOffset + off, namesz - 1)) // strip null
+          ? decoder.decode(new Uint8Array(c.view.buffer, c.view.byteOffset + c.pos, namesz - 1))
           : "";
-      off += align4(namesz);
-      if (off + descsz > nr.view.byteLength) break;
-      const desc = nr.slice(off, descsz);
-      off += align4(descsz);
+      c.skip(align4(namesz));
+      if (c.remaining < descsz) break;
+      const desc = nr.slice(c.pos, descsz);
+      c.skip(align4(descsz));
       notes.push({ sectionName, name, type, desc });
     }
   }
@@ -823,8 +816,9 @@ function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note
 
 function parseVerSymTable(r: Reader, count: number): number[] {
   const versions: number[] = [];
+  const c = r.cursor(0);
   for (let i = 0; i < count; i++) {
-    versions.push(r.u16(i * 2));
+    versions.push(c.u16());
   }
   return versions;
 }
@@ -1004,12 +998,12 @@ function parseHashTables(
   const nchain = r.u32(hashOff + 4);
   if (hashOff + 8 + (nbucket + nchain) * 4 > r.view.byteLength) return [];
 
+  const c = r.cursor(hashOff + 8, (nbucket + nchain) * 4);
   const buckets: number[] = [];
-  for (let i = 0; i < nbucket; i++) buckets.push(r.u32(hashOff + 8 + i * 4));
+  for (let i = 0; i < nbucket; i++) buckets.push(c.u32());
 
   const chains: number[] = [];
-  const chainsOff = hashOff + 8 + nbucket * 4;
-  for (let i = 0; i < nchain; i++) chains.push(r.u32(chainsOff + i * 4));
+  for (let i = 0; i < nchain; i++) chains.push(c.u32());
 
   const byteSize = 8 + (nbucket + nchain) * 4;
   return [
@@ -1041,25 +1035,26 @@ function parseGnuHashTable(
   const symoffset = r.u32(off + 4);
   const bloomSize = r.u32(off + 8);
   const bloomShift = r.u32(off + 12);
-  const wordSize = addrSize(r.is64); // 4 or 8
+  const wordSize = addrSize(r.is64);
 
   const bloomOff = off + 16;
   if (bloomOff + bloomSize * wordSize > r.view.byteLength) return null;
 
+  const c = r.cursor(bloomOff);
+
   const bloom: bigint[] = [];
   for (let i = 0; i < bloomSize; i++) {
-    bloom.push(r.is64 ? r.u64(bloomOff + i * 8) : BigInt(r.u32(bloomOff + i * 4)));
+    bloom.push(c.is64 ? c.u64() : BigInt(c.u32()));
   }
 
-  const bucketsOff = bloomOff + bloomSize * wordSize;
-  if (bucketsOff + nbuckets * 4 > r.view.byteLength) return null;
+  if (c.pos + nbuckets * 4 > r.view.byteLength) return null;
 
   const buckets: number[] = [];
   for (let i = 0; i < nbuckets; i++) {
-    buckets.push(r.u32(bucketsOff + i * 4));
+    buckets.push(c.u32());
   }
 
-  const chainOff = bucketsOff + nbuckets * 4;
+  const chainOff = c.pos;
 
   // Find the highest occupied bucket (start index of the last symbol chain).
   let maxBucket = 0;
@@ -1072,10 +1067,9 @@ function parseGnuHashTable(
   let numHashed = 0;
   if (maxBucket >= symoffset) {
     let idx = maxBucket;
-    while (true) {
-      const entOff = chainOff + (idx - symoffset) * 4;
-      if (entOff + 4 > r.view.byteLength) break;
-      const entry = r.u32(entOff);
+    c.pos = chainOff + (idx - symoffset) * 4;
+    while (c.pos + 4 <= r.view.byteLength) {
+      const entry = c.u32();
       idx++;
       if (entry & 1) break;
     }
@@ -1083,10 +1077,10 @@ function parseGnuHashTable(
   }
 
   const hashValues: number[] = [];
+  c.pos = chainOff;
   for (let i = 0; i < numHashed; i++) {
-    const entOff = chainOff + i * 4;
-    if (entOff + 4 > r.view.byteLength) break;
-    hashValues.push(r.u32(entOff));
+    if (c.pos + 4 > r.view.byteLength) break;
+    hashValues.push(c.u32());
   }
 
   const byteSize = 16 + bloomSize * wordSize + nbuckets * 4 + hashValues.length * 4;
