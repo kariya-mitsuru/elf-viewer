@@ -775,9 +775,7 @@ export class App {
       label: ".eh_frame",
       closeable: true,
       render: (container) => {
-        import("./views/EhFrameView.ts").then(({ renderEhFrame }) =>
-          renderEhFrame(container, elf)
-        );
+        import("./views/EhFrameView.ts").then(({ renderEhFrame }) => renderEhFrame(container, elf));
       },
     });
   }

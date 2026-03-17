@@ -115,11 +115,7 @@ export class Cursor {
   cstring(): string {
     let end = this.pos;
     while (end < this.view.byteLength && this.view.getUint8(end) !== 0) end++;
-    const bytes = new Uint8Array(
-      this.view.buffer,
-      this.view.byteOffset + this.pos,
-      end - this.pos
-    );
+    const bytes = new Uint8Array(this.view.buffer, this.view.byteOffset + this.pos, end - this.pos);
     this.pos = end + 1; // skip NUL
     return new TextDecoder().decode(bytes);
   }

@@ -124,9 +124,9 @@ function formatOneGnuProperty(type: number, datasz: number, data: Cursor): strin
 
     default: {
       const n = Math.min(data.length, 8);
-      const hex = Array.from({ length: n }, () =>
-        data.u8().toString(16).padStart(2, "0")
-      ).join(" ");
+      const hex = Array.from({ length: n }, () => data.u8().toString(16).padStart(2, "0")).join(
+        " "
+      );
       return `type 0x${type.toString(16)}: ${hex}${data.length > 8 ? " ..." : ""}`;
     }
   }
@@ -178,9 +178,7 @@ function formatNoteDesc(note: Note, c: Cursor): string {
   if (name === "GNU") {
     if (type === 3 && c.length > 0) {
       // Build ID
-      return Array.from({ length: c.length }, () =>
-        c.u8().toString(16).padStart(2, "0")
-      ).join("");
+      return Array.from({ length: c.length }, () => c.u8().toString(16).padStart(2, "0")).join("");
     }
     if (type === 1 && c.length >= 16) {
       const os = c.u32();
