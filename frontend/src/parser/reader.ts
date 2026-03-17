@@ -141,12 +141,12 @@ export class Cursor {
   }
 
   /** Create a new Cursor at absolute offset `off` within the underlying buffer. */
-  cursor(off: number, len?: number): Cursor {
-    const view =
-      len !== undefined
-        ? new DataView(this.view.buffer, this.view.byteOffset + off, len)
-        : new DataView(this.view.buffer, this.view.byteOffset + off, this.view.byteLength - off);
-    return new Cursor(view, this.le, this.is64);
+  cursor(off: number, len = this.view.byteLength - off): Cursor {
+    return new Cursor(
+      new DataView(this.view.buffer, this.view.byteOffset + off, len),
+      this.le,
+      this.is64
+    );
   }
 
   /** Return a DataView slice (for APIs that require DataView). */
