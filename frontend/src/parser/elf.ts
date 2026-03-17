@@ -147,19 +147,14 @@ function parseHeader(raw: Uint8Array): [ELFHeader, Cursor] {
 
   const le = data === ELFData.LSB;
   const is64 = cls === ELFClass.ELF64;
-  const c = new Cursor(new DataView(raw.buffer, raw.byteOffset, raw.byteLength), le, is64);
+  const osabi = raw[7] as ELFOSABI;
+  const abiVersion = raw[8];
+  const c = new Cursor(new DataView(raw.buffer, raw.byteOffset, raw.byteLength), le, is64, 16);
 
-  // e_ident: magic(4) + class(1) + data(1) + version(1) + osabi(1) + abiversion(1) + padding(7)
-  c.skip(4 + 2); // magic + class + data (already read from raw)
-  const version = c.u8();
-  const osabi = c.u8() as ELFOSABI;
-  const abiVersion = c.u8();
-  c.skip(7); // EI_PAD
-
-  // File header: type(2) machine(2) e_version(4) then pointer-sized fields
+  // File header (offset 16): type(2) machine(2) e_version(4) then pointer-sized fields
   const type = c.u16() as ELFType;
   const machine = c.u16() as ELFMachine;
-  c.skip(4); // e_version (always 1, same as EI_VERSION)
+  const version = c.u32();
 
   const entryPoint = c.addr();
   const phOffset = is64 ? safeNum(c.u64(), "e_phoff") : c.u32();
