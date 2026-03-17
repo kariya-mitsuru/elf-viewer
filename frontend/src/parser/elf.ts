@@ -595,14 +595,12 @@ function parseDynamic(
   const entSize = dynEntSize(r.is64);
   if (sz % entSize !== 0)
     throw new ParseError(`PT_DYNAMIC size ${sz} is not a multiple of entsize ${entSize}`);
-  const data = r.slice(off, sz);
-
   // First pass: collect entries, find DT_STRTAB address
   const entries: DynamicEntry[] = [];
   let strtabOff: number | null = null;
   let strtabSz: bigint | null = null;
 
-  const c = new Cursor(data.view, r.le, r.is64);
+  const c = r.cursor(off, sz);
   while (c.remaining >= entSize) {
     const tag = (c.is64 ? safeNum(c.i64(), "DynTag") : c.i32()) as DynTag;
     const value = c.is64 ? c.u64() : BigInt(c.u32());
