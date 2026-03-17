@@ -547,7 +547,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym: false,
-        entries: parseRelrTable(data.cursor(0), count, wordSize),
+        entries: parseRelrTable(data, count, wordSize),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
@@ -568,7 +568,7 @@ function parseRelocations(
       sections.push({
         name: sh.name,
         usesDynSym,
-        entries: parseRelTable(data.cursor(0), count, isRela, syms),
+        entries: parseRelTable(data, count, isRela, syms),
         fileOffset: sh.offset,
         byteSize: sh.size,
       });
