@@ -4,7 +4,7 @@
 // .eh_frame, .eh_frame_hdr, and .debug_frame parser.
 // References: DWARF 5 §6.4, LSB Core §10.6, System V ABI AMD64 §3.7
 
-import { Reader, Cursor } from "./reader.ts";
+import { Cursor } from "./reader.ts";
 import {
   type EhFrameCIE,
   type EhFrameFDE,
@@ -540,7 +540,7 @@ function fmtOff(v: number): string {
  *  - .debug_frame has no 'z' augmentation data (pointers are always absptr)
  */
 function parseCfiSection(
-  r: Reader,
+  fc: Cursor,
   sectionFileOffset: number,
   sectionSize: number,
   sectionVaddr: bigint,
@@ -551,7 +551,7 @@ function parseCfiSection(
   const fdes: EhFrameFDE[] = [];
   const cieMap = new Map<number, EhFrameCIE>();
 
-  const c = r.cursor(sectionFileOffset, sectionSize);
+  const c = fc.cursor(sectionFileOffset, sectionSize);
 
   while (c.remaining >= 4) {
     const recordStart = c.pos;
@@ -703,14 +703,14 @@ function parseFDE(
 // ─── .eh_frame_hdr parser ────────────────────────────────────────────────────
 
 function parseEhFrameHdrSection(
-  r: Reader,
+  fc: Cursor,
   sectionFileOffset: number,
   sectionSize: number,
   sectionVaddr: bigint
 ): EhFrameHdr | null {
   if (sectionSize < 4) return null;
 
-  const c = r.cursor(sectionFileOffset, sectionSize);
+  const c = fc.cursor(sectionFileOffset, sectionSize);
 
   const version = c.u8();
   if (version !== 1) return null;
@@ -765,11 +765,11 @@ function estimateEhFrameSize(fileOffset: number, phs: ProgramHeader[], fileSize:
 
 // ─── Public entry points ─────────────────────────────────────────────────────
 
-export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
+export function parseEhFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
   const shs = elf.sectionHeaders;
   const phs = elf.programHeaders;
   const machine = elf.header.machine;
-  const fileSize = r.view.byteLength;
+  const fileSize = fc.length;
 
   // Locate .eh_frame_hdr
   let hdrFileOffset: number | null = null;
@@ -801,7 +801,7 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
     ehFrameVaddr = ehFrameSh.addr;
     ehFrameSize = ehFrameSh.size;
   } else if (hdrFileOffset !== null) {
-    const hdr = parseEhFrameHdrSection(r, hdrFileOffset, hdrSize, hdrVaddr);
+    const hdr = parseEhFrameHdrSection(fc, hdrFileOffset, hdrSize, hdrVaddr);
     if (!hdr) return null;
     const fo = vaddrToFileOffset(hdr.ehFramePtr, phs);
     if (fo === null) return null;
@@ -812,11 +812,11 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
     return null;
   }
 
-  const { cies, fdes } = parseCfiSection(r, ehFrameFileOffset, ehFrameSize, ehFrameVaddr, machine, false);
+  const { cies, fdes } = parseCfiSection(fc, ehFrameFileOffset, ehFrameSize, ehFrameVaddr, machine, false);
 
   let hdr: EhFrameHdr | null = null;
   if (hdrFileOffset !== null) {
-    hdr = parseEhFrameHdrSection(r, hdrFileOffset, hdrSize, hdrVaddr);
+    hdr = parseEhFrameHdrSection(fc, hdrFileOffset, hdrSize, hdrVaddr);
   }
 
   return {
@@ -829,14 +829,14 @@ export function parseEhFrame(elf: ELFFile, r: Reader): EhFrameData | null {
   };
 }
 
-export function parseDebugFrame(elf: ELFFile, r: Reader): EhFrameData | null {
+export function parseDebugFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
   const shs = elf.sectionHeaders;
   const machine = elf.header.machine;
 
   const debugFrameSh = shs.find((s) => s.name === ".debug_frame");
   if (!debugFrameSh || debugFrameSh.size === 0) return null;
 
-  const { cies, fdes } = parseCfiSection(r, debugFrameSh.offset, debugFrameSh.size, debugFrameSh.addr, machine, true);
+  const { cies, fdes } = parseCfiSection(fc, debugFrameSh.offset, debugFrameSh.size, debugFrameSh.addr, machine, true);
 
   return {
     cies,
