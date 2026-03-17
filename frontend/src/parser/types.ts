@@ -4,7 +4,7 @@
 // ELF data type definitions.
 // References: ELF specification, System V ABI, Linux kernel elf.h
 
-import { Reader } from "./reader.ts";
+import { Cursor } from "./reader.ts";
 
 // ─── Enumerations ────────────────────────────────────────────────────────────
 
@@ -352,7 +352,7 @@ export interface Note {
   sectionName: string;
   name: string; // note name (e.g. "GNU", "CORE")
   type: number; // note type
-  desc: Reader; // raw note descriptor bytes
+  desc: Cursor; // raw note descriptor bytes
 }
 
 export interface VersionNeed {

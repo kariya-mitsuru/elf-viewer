@@ -221,17 +221,16 @@ function detectAArch64Bti(elf: ELFFile): SecurityFeature {
   for (const note of elf.notes) {
     if (note.name === "GNU" && note.type === 5) {
       // NT_GNU_PROPERTY_TYPE_0: scan property entries for 0xc0000000
-      const r = note.desc;
-      const align = r.is64 ? 8 : 4;
-      let off = 0;
-      while (off + 8 <= r.view.byteLength) {
-        const ptype = r.u32(off);
-        const datasz = r.u32(off + 4);
+      const c = note.desc.cursor(0);
+      const align = c.is64 ? 8 : 4;
+      while (c.remaining >= 8) {
+        const ptype = c.u32();
+        const datasz = c.u32();
+        const dataStart = c.pos;
         if (ptype === 0xc0000000 && datasz >= 4) {
-          const bits = r.u32(off + 8);
-          if (bits & 0x1) hasBtiProp = true;
+          if (c.u32() & 0x1) hasBtiProp = true;
         }
-        off += 8 + ((datasz + align - 1) & ~(align - 1));
+        c.pos = dataStart + ((datasz + align - 1) & ~(align - 1));
       }
     }
   }
@@ -256,17 +255,16 @@ function detectAArch64Pac(elf: ELFFile): SecurityFeature {
   let hasPacProp = false;
   for (const note of elf.notes) {
     if (note.name === "GNU" && note.type === 5) {
-      const r = note.desc;
-      const align = r.is64 ? 8 : 4;
-      let off = 0;
-      while (off + 8 <= r.view.byteLength) {
-        const ptype = r.u32(off);
-        const datasz = r.u32(off + 4);
+      const c = note.desc.cursor(0);
+      const align = c.is64 ? 8 : 4;
+      while (c.remaining >= 8) {
+        const ptype = c.u32();
+        const datasz = c.u32();
+        const dataStart = c.pos;
         if (ptype === 0xc0000000 && datasz >= 4) {
-          const bits = r.u32(off + 8);
-          if (bits & 0x2) hasPacProp = true;
+          if (c.u32() & 0x2) hasPacProp = true;
         }
-        off += 8 + ((datasz + align - 1) & ~(align - 1));
+        c.pos = dataStart + ((datasz + align - 1) & ~(align - 1));
       }
     }
   }

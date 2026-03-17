@@ -4,7 +4,7 @@
 // Notes view: renders NOTE sections (readelf -n).
 
 import { type ELFFile, type Note } from "../parser/types.ts";
-import { type Reader } from "../parser/reader.ts";
+import { type Cursor } from "../parser/reader.ts";
 import { slugId, renderSectionNav } from "../ui/SectionNav.ts";
 import { appendEmptyMessage } from "./viewUtils.ts";
 
@@ -77,13 +77,13 @@ function fmtX86Feature2(bits: number): string {
   return out.length ? out.join(", ") : `0x${bits.toString(16)}`;
 }
 
-function formatOneGnuProperty(type: number, datasz: number, data: Reader): string {
-  const u32 = () => (datasz >= 4 ? data.u32(0) : 0);
+function formatOneGnuProperty(type: number, datasz: number, data: Cursor): string {
+  const u32 = () => (datasz >= 4 ? data.u32() : 0);
 
   switch (type) {
     case 0x00000001: {
       // GNU_PROPERTY_STACK_SIZE
-      const sz = datasz >= 8 ? data.u64(0) : BigInt(datasz >= 4 ? data.u32(0) : 0);
+      const sz = datasz >= 8 ? data.u64() : BigInt(datasz >= 4 ? data.u32() : 0);
       return `stack size: 0x${sz.toString(16)}`;
     }
     case 0x00000002:
@@ -123,26 +123,24 @@ function formatOneGnuProperty(type: number, datasz: number, data: Reader): strin
       return `x86 ISA used: ${fmtX86Isa1(u32())}`; // GNU_PROPERTY_X86_ISA_1_USED
 
     default: {
-      const n = Math.min(data.view.byteLength, 8);
-      const hex = Array.from({ length: n }, (_, i) =>
-        data.u8(i).toString(16).padStart(2, "0")
+      const n = Math.min(data.length, 8);
+      const hex = Array.from({ length: n }, () =>
+        data.u8().toString(16).padStart(2, "0")
       ).join(" ");
-      return `type 0x${type.toString(16)}: ${hex}${data.view.byteLength > 8 ? " ..." : ""}`;
+      return `type 0x${type.toString(16)}: ${hex}${data.length > 8 ? " ..." : ""}`;
     }
   }
 }
 
-function formatGnuProperties(r: Reader): string {
-  const align = r.is64 ? 8 : 4;
+function formatGnuProperties(c: Cursor): string {
+  const align = c.is64 ? 8 : 4;
   const lines: string[] = [];
-  let off = 0;
-  while (off + 8 <= r.view.byteLength) {
-    const type = r.u32(off);
-    const datasz = r.u32(off + 4);
-    off += 8;
-    const actualSz = Math.min(datasz, r.view.byteLength - off);
-    const data = r.slice(off, actualSz);
-    off += (datasz + align - 1) & ~(align - 1);
+  while (c.remaining >= 8) {
+    const type = c.u32();
+    const datasz = c.u32();
+    const actualSz = Math.min(datasz, c.remaining);
+    const data = c.sub(actualSz);
+    c.skip((datasz + align - 1) & ~(align - 1));
     lines.push(formatOneGnuProperty(type, datasz, data));
   }
   return lines.join("<br>");
@@ -150,30 +148,19 @@ function formatGnuProperties(r: Reader): string {
 
 // ── NT_STAPSDT parser ─────────────────────────────────────────────────────
 
-const _td = new TextDecoder();
+function formatStapsdtDesc(c: Cursor): string {
+  const ptrSize = c.is64 ? 8 : 4;
+  if (c.length < ptrSize * 3) return "(too short)";
 
-function formatStapsdtDesc(r: Reader): string {
-  const ptrSize = r.is64 ? 8 : 4;
-  if (r.view.byteLength < ptrSize * 3) return "(too short)";
+  const pc = c.addr();
+  const base = c.addr();
+  const semaphore = c.addr();
 
-  const pc = r.addr(0);
-  const base = r.addr(ptrSize);
-  const semaphore = r.addr(ptrSize * 2);
+  const provider = c.cstring();
+  const probe = c.cstring();
+  const args = c.cstring();
 
-  // Read three consecutive NUL-terminated strings
-  let off = ptrSize * 3;
-  const readStr = (): string => {
-    const start = off;
-    while (off < r.view.byteLength && r.u8(off) !== 0) off++;
-    const s = _td.decode(new Uint8Array(r.view.buffer, r.view.byteOffset + start, off - start));
-    off++; // skip NUL
-    return s;
-  };
-  const provider = readStr();
-  const probe = readStr();
-  const args = readStr();
-
-  const padW = r.is64 ? 16 : 8;
+  const padW = c.is64 ? 16 : 8;
   const h = (v: bigint) => `0x${v.toString(16).padStart(padW, "0")}`;
   const lines: string[] = [
     `${provider}::${probe}`,
@@ -186,29 +173,29 @@ function formatStapsdtDesc(r: Reader): string {
 
 // ── Generic note description ───────────────────────────────────────────────
 
-function formatNoteDesc(note: Note, r: Reader): string {
+function formatNoteDesc(note: Note, c: Cursor): string {
   const { name, type } = note;
   if (name === "GNU") {
-    if (type === 3 && r.view.byteLength > 0) {
+    if (type === 3 && c.length > 0) {
       // Build ID
-      return Array.from({ length: r.view.byteLength }, (_, i) =>
-        r.u8(i).toString(16).padStart(2, "0")
+      return Array.from({ length: c.length }, () =>
+        c.u8().toString(16).padStart(2, "0")
       ).join("");
     }
-    if (type === 1 && r.view.byteLength >= 16) {
-      const os = r.u32(0);
-      const major = r.u32(4);
-      const minor = r.u32(8);
-      const patch = r.u32(12);
+    if (type === 1 && c.length >= 16) {
+      const os = c.u32();
+      const major = c.u32();
+      const minor = c.u32();
+      const patch = c.u32();
       const osNames: Record<number, string> = { 0: "Linux", 1: "Hurd", 2: "Solaris", 3: "FreeBSD" };
       return `OS: ${osNames[os] ?? os}, ABI: ${major}.${minor}.${patch}`;
     }
   }
   // Hex dump for unknown
-  if (r.view.byteLength === 0) return "(empty)";
-  const n = Math.min(r.view.byteLength, 32);
-  const hex = Array.from({ length: n }, (_, i) => r.u8(i).toString(16).padStart(2, "0")).join(" ");
-  return r.view.byteLength <= 32 ? hex : hex + ` ... (${r.view.byteLength} bytes)`;
+  if (c.length === 0) return "(empty)";
+  const n = Math.min(c.length, 32);
+  const hex = Array.from({ length: n }, () => c.u8().toString(16).padStart(2, "0")).join(" ");
+  return c.length <= 32 ? hex : hex + ` ... (${c.length} bytes)`;
 }
 
 function noteTypeName(name: string, type: number): string {
@@ -264,7 +251,7 @@ export function renderNotes(container: HTMLElement, elf: ELFFile): void {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="mono">${note.name}</td>
-        <td class="mono">0x${note.desc.view.byteLength.toString(16).padStart(8, "0")}</td>
+        <td class="mono">0x${note.desc.length.toString(16).padStart(8, "0")}</td>
         <td class="mono">${noteTypeName(note.name, note.type)}</td>
         <td class="${descClass}">${descHtml}</td>
       `;

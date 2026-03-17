@@ -49,7 +49,7 @@ import {
   type HashTable,
   type GnuHashTable,
 } from "./types.ts";
-import { Reader, Cursor } from "./reader.ts"; // Reader kept for Note.desc interface
+import { Cursor } from "./reader.ts";
 import { parseEhFrame, parseDebugFrame } from "./ehframe.ts";
 
 const decoder = new TextDecoder();
@@ -815,11 +815,7 @@ function parseNotes(shs: SectionHeader[], fc: Cursor, phs: ProgramHeader[]): Not
           : "";
       c.skip(align4(namesz));
       if (c.remaining < descsz) break;
-      const desc = new Reader(
-        new DataView(c.view.buffer, c.view.byteOffset + c.pos, descsz),
-        c.le,
-        c.is64
-      );
+      const desc = c.sub(descsz);
       c.skip(align4(descsz));
       notes.push({ sectionName, name, type, desc });
     }
