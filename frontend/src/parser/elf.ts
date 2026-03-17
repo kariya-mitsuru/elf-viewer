@@ -726,7 +726,7 @@ function parseRelocationsFromDynamic(
     get(DynTag.PltRelSz),
     isRelaForPlt ? relaEnt : relEnt,
     isRelaForPlt,
-    ".rela.plt"
+    isRelaForPlt ? ".rela.plt" : ".rel.plt"
   );
 
   // DT_RELR / DT_RELRSZ / DT_RELRENT
