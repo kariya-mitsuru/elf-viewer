@@ -358,13 +358,12 @@ function vaddrToFileOffset(
 // ─── Symbol table ─────────────────────────────────────────────────────────────
 
 function parseSymbolEntries(
-  r: Reader,
+  c: Cursor,
   count: number,
   strtab: StrTabFn,
   shs: SectionHeader[]
 ): Symbol[] {
   const syms: Symbol[] = [];
-  const c = r.cursor(0);
 
   for (let i = 0; i < count; i++) {
     let name = "",
@@ -444,7 +443,7 @@ function parseSymbols(
       `Symbol table size ${data.view.byteLength} is not a multiple of sh_entsize ${entSize}`
     );
   const count = data.view.byteLength / entSize;
-  return parseSymbolEntries(data, count, strtabData, shs);
+  return parseSymbolEntries(data.cursor(0), count, strtabData, shs);
 }
 
 // ─── Relocations ─────────────────────────────────────────────────────────────
@@ -658,7 +657,7 @@ function parseDynSymbolsFromDynamic(
       `Dynamic symbol table [${symtabOff}..+${totalSize}] exceeds file size (${r.view.byteLength})`
     );
 
-  return parseSymbolEntries(r.slice(symtabOff, totalSize), count, strtab, []);
+  return parseSymbolEntries(r.cursor(symtabOff, totalSize), count, strtab, []);
 }
 
 function parseRelocationsFromDynamic(
