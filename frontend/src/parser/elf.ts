@@ -810,9 +810,8 @@ function parseNotes(shs: SectionHeader[], r: Reader, phs: ProgramHeader[]): Note
 
 // ─── Version info ─────────────────────────────────────────────────────────────
 
-function parseVerSymTable(r: Reader, count: number): number[] {
+function parseVerSymTable(c: Cursor, count: number): number[] {
   const versions: number[] = [];
-  const c = r.cursor(0);
   for (let i = 0; i < count; i++) {
     versions.push(c.u16());
   }
@@ -916,7 +915,7 @@ function parseVersionInfo(
   if (dynSymCount > 0) {
     const fileOff = vaddrToFileOffset(verSymVA, phs, "DT_VERSYM");
     if (fileOff !== null && fileOff + verSymByteSize <= r.view.byteLength) {
-      symVersions = parseVerSymTable(r.slice(fileOff, verSymByteSize), dynSymCount);
+      symVersions = parseVerSymTable(r.cursor(fileOff, verSymByteSize), dynSymCount);
       verSymFileOffset = fileOff;
     }
   }
