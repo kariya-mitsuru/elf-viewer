@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Mitsuru Kariya
 // SPDX-License-Identifier: MIT
 
+export class ParseError extends Error {}
+
 // ─── Cursor (sequential reader) ──────────────────────────────────────────────
 
 /**
@@ -136,8 +138,13 @@ export class Cursor {
     );
   }
 
-  /** Create a new Cursor at absolute offset `off` within the underlying buffer. */
-  cursor(off: number, len = this.view.byteLength - off): Cursor {
+  /** Create a new Cursor at absolute offset `off` within the underlying buffer.
+   *  When `label` is provided, bounds are checked and a ParseError is thrown on violation. */
+  cursor(off: number, len = this.view.byteLength - off, label?: string): Cursor {
+    if (label !== undefined && (off < 0 || len < 0 || len > this.view.byteLength - off))
+      throw new ParseError(
+        `${label}: [${off}..+${len}] exceeds buffer size (${this.view.byteLength})`
+      );
     return new Cursor(
       new DataView(this.view.buffer, this.view.byteOffset + off, len),
       this.le,
