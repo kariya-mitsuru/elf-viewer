@@ -993,68 +993,42 @@ function parseVersionInfo(
  *   u32  bucket[nbucket]   — head symbol index per hash bucket (0 = empty)
  *   u32  chain[nchain]     — chains[i] = next sym in chain for sym i (0 = end)
  */
-function parseHashTables(
-  get: (tag: DynTag) => bigint | null,
-  phs: ProgramHeader[],
-  r: Reader
-): HashTable[] {
-  const hashOff = vaddrToFileOffset(get(DynTag.Hash), phs, "DT_HASH");
-  if (hashOff === null || hashOff + 8 > r.view.byteLength) return [];
+function parseHashTable(c: Cursor, fileOffset: number): HashTable {
+  const nbucket = c.u32();
+  const nchain = c.u32();
 
-  const nbucket = r.u32(hashOff);
-  const nchain = r.u32(hashOff + 4);
-  if (hashOff + 8 + (nbucket + nchain) * 4 > r.view.byteLength) return [];
-
-  const c = r.cursor(hashOff + 8, (nbucket + nchain) * 4);
   const buckets: number[] = [];
   for (let i = 0; i < nbucket; i++) buckets.push(c.u32());
 
   const chains: number[] = [];
   for (let i = 0; i < nchain; i++) chains.push(c.u32());
 
-  const byteSize = 8 + (nbucket + nchain) * 4;
-  return [
-    {
-      sectionName: ".hash",
-      shIndex: -1,
-      nbucket,
-      nchain,
-      buckets,
-      chains,
-      symNames: [],
-      fileOffset: hashOff,
-      byteSize,
-    },
-  ];
+  return {
+    sectionName: ".hash",
+    shIndex: -1,
+    nbucket,
+    nchain,
+    buckets,
+    chains,
+    symNames: [],
+    fileOffset,
+    byteSize: c.pos,
+  };
 }
 
 // ─── GNU Hash table ───────────────────────────────────────────────────────────
 
-function parseGnuHashTable(
-  get: (tag: DynTag) => bigint | null,
-  phs: ProgramHeader[],
-  r: Reader
-): GnuHashTable | null {
-  const off = vaddrToFileOffset(get(DynTag.GnuHash), phs, "DT_GNU_HASH");
-  if (off === null || off + 16 > r.view.byteLength) return null;
-
-  const nbuckets = r.u32(off);
-  const symoffset = r.u32(off + 4);
-  const bloomSize = r.u32(off + 8);
-  const bloomShift = r.u32(off + 12);
-  const wordSize = addrSize(r.is64);
-
-  const bloomOff = off + 16;
-  if (bloomOff + bloomSize * wordSize > r.view.byteLength) return null;
-
-  const c = r.cursor(bloomOff);
+function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
+  const nbuckets = c.u32();
+  const symoffset = c.u32();
+  const bloomSize = c.u32();
+  const bloomShift = c.u32();
+  const wordSize = c.is64 ? 8 : 4;
 
   const bloom: bigint[] = [];
   for (let i = 0; i < bloomSize; i++) {
     bloom.push(c.is64 ? c.u64() : BigInt(c.u32()));
   }
-
-  if (c.pos + nbuckets * 4 > r.view.byteLength) return null;
 
   const buckets: number[] = [];
   for (let i = 0; i < nbuckets; i++) {
@@ -1075,7 +1049,7 @@ function parseGnuHashTable(
   if (maxBucket >= symoffset) {
     let idx = maxBucket;
     c.pos = chainOff + (idx - symoffset) * 4;
-    while (c.pos + 4 <= r.view.byteLength) {
+    while (c.remaining >= 4) {
       const entry = c.u32();
       idx++;
       if (entry & 1) break;
@@ -1086,7 +1060,6 @@ function parseGnuHashTable(
   const hashValues: number[] = [];
   c.pos = chainOff;
   for (let i = 0; i < numHashed; i++) {
-    if (c.pos + 4 > r.view.byteLength) break;
     hashValues.push(c.u32());
   }
 
@@ -1104,7 +1077,7 @@ function parseGnuHashTable(
     buckets,
     hashValues,
     symNames: [],
-    fileOffset: off,
+    fileOffset,
     byteSize,
   };
 }
@@ -1137,8 +1110,12 @@ export function parseELF(bytes: Uint8Array): ELFFile {
   let dynSymbols = parseSymbols(shs, r, SHType.DynSym);
 
   // Step 1-2: Parse hash tables first (no dynSymbols needed)
-  const hashTables = parseHashTables(getDyn, phs, r);
-  const gnuHashTable = parseGnuHashTable(getDyn, phs, r);
+  const hashTables: HashTable[] = [];
+  const hashOff = vaddrToFileOffset(getDyn(DynTag.Hash), phs, "DT_HASH");
+  if (hashOff !== null) hashTables.push(parseHashTable(r.cursor(hashOff), hashOff));
+
+  const gnuHashOff = vaddrToFileOffset(getDyn(DynTag.GnuHash), phs, "DT_GNU_HASH");
+  const gnuHashTable = gnuHashOff !== null ? parseGnuHashTable(r.cursor(gnuHashOff), gnuHashOff) : null;
 
   // Step 3: Fallback dynamic symbol parse — derive count from hash tables
   if (dynSymbols.length === 0 && dynamics.length > 0) {
