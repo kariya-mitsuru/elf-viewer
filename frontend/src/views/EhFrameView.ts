@@ -70,10 +70,7 @@ function renderHdr(container: HTMLElement, hdr: EhFrameHdr, is64: boolean): void
       "fde_count_enc",
       `0x${hdr.fdeCountEnc.toString(16).padStart(2, "0")} (${ehPeEncName(hdr.fdeCountEnc)})`,
     ],
-    [
-      "table_enc",
-      `0x${hdr.tableEnc.toString(16).padStart(2, "0")} (${ehPeEncName(hdr.tableEnc)})`,
-    ],
+    ["table_enc", `0x${hdr.tableEnc.toString(16).padStart(2, "0")} (${ehPeEncName(hdr.tableEnc)})`],
     ["eh_frame_ptr", fmtHex(hdr.ehFramePtr, padW)],
     ["FDE count", `${hdr.fdeCount}`],
   ];
@@ -173,11 +170,7 @@ function renderCIE(cie: EhFrameCIE, machine: number, padW: number): HTMLElement 
   return div;
 }
 
-function renderFDE(
-  fde: EhFrameFDE,
-  cieMap: Map<number, EhFrameCIE>,
-  padW: number
-): HTMLElement {
+function renderFDE(fde: EhFrameFDE, cieMap: Map<number, EhFrameCIE>, padW: number): HTMLElement {
   const div = document.createElement("div");
   div.className = "eh-record";
 

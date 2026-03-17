@@ -413,10 +413,7 @@ export function dynTagName(tag: DynTag, machine?: ELFMachine): string {
       // Architecture-specific range (0x70000000+)
       const tagNum = tag as number;
       if (tagNum >= 0x70000000 && tagNum <= 0x7fffffff) {
-        const archTable =
-          machine === ELFMachine.AArch64
-            ? AARCH64_DYN_TAGS
-            : X86_64_DYN_TAGS;
+        const archTable = machine === ELFMachine.AArch64 ? AARCH64_DYN_TAGS : X86_64_DYN_TAGS;
         const name = archTable[tagNum];
         if (name) return name;
       }

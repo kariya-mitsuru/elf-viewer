@@ -532,14 +532,24 @@ function parseRelrTable(
     if ((w & 1n) === 0n) {
       offset = w;
       entries.push({
-        offset, symIndex: 0, symName: "", symValue: 0n, type: relType, addend: null,
+        offset,
+        symIndex: 0,
+        symName: "",
+        symValue: 0n,
+        type: relType,
+        addend: null,
       });
     } else {
       for (let bit = 1; bit < wordBits; bit++) {
         offset += BigInt(entSize);
         if ((w >> BigInt(bit)) & 1n) {
           entries.push({
-            offset, symIndex: 0, symName: "", symValue: 0n, type: relType, addend: null,
+            offset,
+            symIndex: 0,
+            symName: "",
+            symValue: 0n,
+            type: relType,
+            addend: null,
           });
         }
       }
@@ -651,9 +661,7 @@ function parseDynamic(
   if (strtabOff === null) throw new ParseError("DT_STRTAB is missing from dynamic section");
   if (strtabSz === null) throw new ParseError("DT_STRSZ is missing from dynamic section");
   if (BigInt(strtabOff) + strtabSz > BigInt(fc.length))
-    throw new ParseError(
-      `DT_STRTAB [${strtabOff}..+${strtabSz}] exceeds file size (${fc.length})`
-    );
+    throw new ParseError(`DT_STRTAB [${strtabOff}..+${strtabSz}] exceeds file size (${fc.length})`);
   const strtab = strTab(fc.subView(strtabOff, Number(strtabSz)));
 
   // String-valued tags
@@ -721,11 +729,14 @@ function parseRelocationsFromDynamic(
       );
     const fileOff = vaddrToFileOffset(va, phs, sectionName)!;
     if (BigInt(fileOff) + sz > BigInt(fc.length))
-      throw new ParseError(
-        `${sectionName}: [${fileOff}..+${sz}] exceeds file size (${fc.length})`
-      );
+      throw new ParseError(`${sectionName}: [${fileOff}..+${sz}] exceeds file size (${fc.length})`);
     const byteSize = Number(sz);
-    return { data: fc.cursor(fileOff, byteSize), count: byteSize / expectedEntSz, fileOff, byteSize };
+    return {
+      data: fc.cursor(fileOff, byteSize),
+      count: byteSize / expectedEntSz,
+      fileOff,
+      byteSize,
+    };
   }
 
   function parseTable(
@@ -864,8 +875,7 @@ function parseVerNeedTable(
   const needs: VersionNeed[] = [];
   for (let i = 0; i < count && c.remaining >= VERNEED_SIZE; i++) {
     const version = c.u16();
-    if (version !== 1)
-      throw new ParseError(`VERNEED: unsupported version ${version} (expected 1)`);
+    if (version !== 1) throw new ParseError(`VERNEED: unsupported version ${version} (expected 1)`);
     const cnt = c.u16();
     const fileIdx = c.u32();
     const auxOff = c.u32();
@@ -905,8 +915,7 @@ function parseVerDefTable(
   const defs: VersionDef[] = [];
   for (let i = 0; i < count && c.remaining >= VERDEF_SIZE; i++) {
     const version = c.u16();
-    if (version !== 1)
-      throw new ParseError(`VERDEF: unsupported version ${version} (expected 1)`);
+    if (version !== 1) throw new ParseError(`VERDEF: unsupported version ${version} (expected 1)`);
     const flags = c.u16();
     const ndx = c.u16();
     const cnt = c.u16();
@@ -973,11 +982,7 @@ function parseVersionInfo(
   const verNeedOff = vaddrToFileOffset(verNeedVA, phs, "DT_VERNEED");
   if (verNeedOff !== null) {
     const count = verNeedNum !== null ? Number(verNeedNum) : 0;
-    const { needs, byteSize } = parseVerNeedTable(
-      fc.cursor(verNeedOff),
-      strtab,
-      count
-    );
+    const { needs, byteSize } = parseVerNeedTable(fc.cursor(verNeedOff), strtab, count);
     versionNeeds = needs;
     verNeedByteSize = byteSize;
     verNeedFileOffset = verNeedOff;
@@ -991,11 +996,7 @@ function parseVersionInfo(
   const verDefOff = vaddrToFileOffset(verDefVA, phs, "DT_VERDEF");
   if (verDefOff !== null) {
     const count = verDefNum !== null ? Number(verDefNum) : 0;
-    const { defs, byteSize } = parseVerDefTable(
-      fc.cursor(verDefOff),
-      strtab,
-      count
-    );
+    const { defs, byteSize } = parseVerDefTable(fc.cursor(verDefOff), strtab, count);
     versionDefs = defs;
     verDefByteSize = byteSize;
     verDefFileOffset = verDefOff;
@@ -1145,7 +1146,8 @@ export function parseELF(bytes: Uint8Array): ELFFile {
   if (hashOff !== null) hashTables.push(parseHashTable(fc.cursor(hashOff), hashOff));
 
   const gnuHashOff = vaddrToFileOffset(getDyn(DynTag.GnuHash), phs, "DT_GNU_HASH");
-  const gnuHashTable = gnuHashOff !== null ? parseGnuHashTable(fc.cursor(gnuHashOff), gnuHashOff) : null;
+  const gnuHashTable =
+    gnuHashOff !== null ? parseGnuHashTable(fc.cursor(gnuHashOff), gnuHashOff) : null;
 
   // Step 3: Fallback dynamic symbol parse — derive count from hash tables
   if (dynSymbols.length === 0 && dynamics.length > 0) {

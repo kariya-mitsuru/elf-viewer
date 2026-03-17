@@ -431,7 +431,9 @@ function decodeCFI(
           break;
         case 0x05: {
           const reg = c.uleb128();
-          instrs.push(`DW_CFA_offset_extended: ${rn(reg)} at cfa${fmtOff(c.uleb128() * dataAlign)}`);
+          instrs.push(
+            `DW_CFA_offset_extended: ${rn(reg)} at cfa${fmtOff(c.uleb128() * dataAlign)}`
+          );
           break;
         }
         case 0x06:
@@ -478,7 +480,9 @@ function decodeCFI(
         }
         case 0x11: {
           const reg = c.uleb128();
-          instrs.push(`DW_CFA_offset_extended_sf: ${rn(reg)} at cfa${fmtOff(c.sleb128() * dataAlign)}`);
+          instrs.push(
+            `DW_CFA_offset_extended_sf: ${rn(reg)} at cfa${fmtOff(c.sleb128() * dataAlign)}`
+          );
           break;
         }
         case 0x12: {
@@ -587,7 +591,16 @@ function parseCfiSection(
     } else {
       const cieOff = isDebugFrame ? idField : contentStart - idField;
       const cie = cieMap.get(cieOff);
-      const fde = parseFDE(c, recordEnd, recordStart, totalRecordSize, machine, cie ?? null, sectionVaddr, cieOff);
+      const fde = parseFDE(
+        c,
+        recordEnd,
+        recordStart,
+        totalRecordSize,
+        machine,
+        cie ?? null,
+        sectionVaddr,
+        cieOff
+      );
       fdes.push(fde);
     }
 
@@ -812,7 +825,14 @@ export function parseEhFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
     return null;
   }
 
-  const { cies, fdes } = parseCfiSection(fc, ehFrameFileOffset, ehFrameSize, ehFrameVaddr, machine, false);
+  const { cies, fdes } = parseCfiSection(
+    fc,
+    ehFrameFileOffset,
+    ehFrameSize,
+    ehFrameVaddr,
+    machine,
+    false
+  );
 
   let hdr: EhFrameHdr | null = null;
   if (hdrFileOffset !== null) {
@@ -836,7 +856,14 @@ export function parseDebugFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
   const debugFrameSh = shs.find((s) => s.name === ".debug_frame");
   if (!debugFrameSh || debugFrameSh.size === 0) return null;
 
-  const { cies, fdes } = parseCfiSection(fc, debugFrameSh.offset, debugFrameSh.size, debugFrameSh.addr, machine, true);
+  const { cies, fdes } = parseCfiSection(
+    fc,
+    debugFrameSh.offset,
+    debugFrameSh.size,
+    debugFrameSh.addr,
+    machine,
+    true
+  );
 
   return {
     cies,
