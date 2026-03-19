@@ -63,7 +63,7 @@ export function renderSectionHeaders(
       <td class="mono${dimInfo}">${sh.info}</td>
       <td class="mono${dimAlign}">${sh.addralign}</td>
     `;
-    const navTarget = onNavigate ? sectionNavTarget(sh.type) : null;
+    const navTarget = onNavigate ? sectionNavTarget(sh.type, sh.name) : null;
     if (navTarget !== null) {
       tr.classList.add("nav-row");
       tr.addEventListener("dblclick", () => onNavigate!(navTarget));

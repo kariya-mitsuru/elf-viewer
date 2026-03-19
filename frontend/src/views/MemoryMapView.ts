@@ -1161,7 +1161,7 @@ function placeSectionRow(
     item.innerHTML = `<span>${escapeHtml(sec.name)}${splitLabel}</span><span style="margin-left:auto;font-size:10px;opacity:0.7">0x${secSize.toString(16).toUpperCase()}</span>`;
     addTooltipHandlers(item, () => sectionTooltipHtml(sec, fmtAddr, fmtOffset));
     const hasHex = !!onHexDump && !sec.isNobits && sec.size > 0;
-    const navTarget = onNavigate ? sectionNavTarget(sec.shType) : null;
+    const navTarget = onNavigate ? sectionNavTarget(sec.shType, sec.name) : null;
     if (onSectionClick || hasHex || navTarget !== null) {
       item.style.cursor = "pointer";
       if (onSectionClick) {

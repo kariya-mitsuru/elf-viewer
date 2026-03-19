@@ -890,8 +890,10 @@ export function parseEhFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
     fdes,
     hdr,
     sectionFileOffset: ehFrameFileOffset,
+    sectionSize: ehFrameSize,
     sectionVaddr: ehFrameVaddr,
     hdrSectionFileOffset: hdrFileOffset,
+    hdrSectionSize: hdrFileOffset !== null ? hdrSize : null,
   };
 }
 
@@ -918,8 +920,10 @@ export function parseDebugFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
     fdes,
     hdr: null,
     sectionFileOffset: debugFrameSh.offset,
+    sectionSize: debugFrameSh.size,
     sectionVaddr: debugFrameSh.addr,
     hdrSectionFileOffset: null,
+    hdrSectionSize: null,
   };
 }
 

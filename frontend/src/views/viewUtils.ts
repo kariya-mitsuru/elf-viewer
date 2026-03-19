@@ -37,10 +37,12 @@ export type NavTarget =
   | "notes"
   | "versions"
   | "hash"
-  | "gnu-hash";
+  | "gnu-hash"
+  | "eh-frame"
+  | "debug-frame";
 
-/** Maps a section type to the view tab that displays its content. */
-export function sectionNavTarget(type: SHType): NavTarget | null {
+/** Maps a section type (and optionally name) to the view tab that displays its content. */
+export function sectionNavTarget(type: SHType, name?: string): NavTarget | null {
   switch (type) {
     case SHType.DynSym:
     case SHType.SymTab:
@@ -62,8 +64,16 @@ export function sectionNavTarget(type: SHType): NavTarget | null {
     case SHType.GnuHash:
       return "gnu-hash";
     default:
-      return null;
+      break;
   }
+  // Fall back to section name for types like ProgBits
+  if (name === ".eh_frame" || name === ".eh_frame_hdr") {
+    return "eh-frame";
+  }
+  if (name === ".debug_frame") {
+    return "debug-frame";
+  }
+  return null;
 }
 
 /** Human-readable label for a NavTarget (used in context menus). */
@@ -83,6 +93,10 @@ export function navTargetLabel(target: NavTarget): string {
       return "Hash Table View";
     case "gnu-hash":
       return "GNU Hash Table View";
+    case "eh-frame":
+      return ".eh_frame View";
+    case "debug-frame":
+      return ".debug_frame View";
   }
 }
 
@@ -583,6 +597,8 @@ export function phNavTarget(t: PHType): NavTarget | null {
     case PHType.Note:
     case PHType.GnuProperty:
       return "notes";
+    case PHType.GnuEhFrame:
+      return "eh-frame";
     default:
       return null;
   }
