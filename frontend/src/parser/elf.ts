@@ -358,12 +358,14 @@ function sectionData(sh: SectionHeader, fc: Cursor): Cursor | null {
 /**
  * Maps a virtual address to a file offset by walking PT_LOAD segments.
  * Used as a fallback for stripped binaries that lack section headers.
- * Returns null if no PT_LOAD segment covers the address.
+ * Returns null when `va` is null (tag absent).
+ * When `context` is given and a non-null `va` is not found in any PT_LOAD,
+ * throws ParseError — this catches genuinely invalid addresses.
  */
-function vaddrToFileOffset(
+export function vaddrToFileOffset(
   va: bigint | null,
   phs: ProgramHeader[],
-  context: string
+  context?: string
 ): number | null {
   if (va === null) return null;
   for (const ph of phs) {
@@ -372,7 +374,10 @@ function vaddrToFileOffset(
       return ph.offset + Number(va - ph.vaddr);
     }
   }
-  throw new ParseError(`${context}: vaddr ${va} not found in any PT_LOAD segment`);
+  if (context !== undefined) {
+    throw new ParseError(`${context}: vaddr ${va} not found in any PT_LOAD segment`);
+  }
+  return null;
 }
 
 // ─── Symbol table ─────────────────────────────────────────────────────────────
@@ -683,7 +688,12 @@ function parseDynSymbolsFromDynamic(
 
   const entSize = symEntSize(fc.is64);
   const totalSize = count * entSize;
-  return parseSymbolEntries(fc.cursor(symtabOff, totalSize, "Dynamic symbol table"), count, strtab, []);
+  return parseSymbolEntries(
+    fc.cursor(symtabOff, totalSize, "Dynamic symbol table"),
+    count,
+    strtab,
+    []
+  );
 }
 
 function parseRelocationsFromDynamic(
@@ -1145,8 +1155,9 @@ export function parseELF(bytes: Uint8Array): ELFFile {
   }
 
   // Step 4: Populate symNames now that dynSymbols is ready
-  for (const ht of hashTables) ht.symNames = dynSymbols.map((s) => s.name);
-  if (gnuHashTable !== null) gnuHashTable.symNames = dynSymbols.map((s) => s.name);
+  const symNames = dynSymbols.map((s) => s.name);
+  for (const ht of hashTables) ht.symNames = symNames;
+  if (gnuHashTable !== null) gnuHashTable.symNames = symNames;
 
   let relocs = parseRelocations(shs, fc, dynSymbols, symbols, header.machine);
   if (relocs.length === 0 && dynamics.length > 0) {

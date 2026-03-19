@@ -7,9 +7,6 @@ import {
   type ELFFile,
   type Symbol,
   type VersionInfo,
-  STBind,
-  STType,
-  STVisibility,
   SHN_UNDEF,
   SHN_ABS,
   SHN_COMMON,
@@ -19,63 +16,14 @@ import {
   verNumCellHtml,
   VIRTUAL_THRESHOLD,
   createSubTabs,
+  createSearchInput,
   appendEmptyMessage,
   hexPad,
+  stBindName,
+  stTypeName,
+  stVisName,
 } from "./viewUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
-
-function bindName(b: STBind): string {
-  switch (b) {
-    case STBind.Local:
-      return "LOCAL";
-    case STBind.Global:
-      return "GLOBAL";
-    case STBind.Weak:
-      return "WEAK";
-    case STBind.GnuUnique:
-      return "UNIQUE";
-    default:
-      return `${b}`;
-  }
-}
-
-function typeName(t: STType): string {
-  switch (t) {
-    case STType.NoType:
-      return "NOTYPE";
-    case STType.Object:
-      return "OBJECT";
-    case STType.Func:
-      return "FUNC";
-    case STType.Section:
-      return "SECTION";
-    case STType.File:
-      return "FILE";
-    case STType.Common:
-      return "COMMON";
-    case STType.Tls:
-      return "TLS";
-    case STType.GnuIfunc:
-      return "IFUNC";
-    default:
-      return `${t}`;
-  }
-}
-
-function visName(v: STVisibility): string {
-  switch (v) {
-    case STVisibility.Default:
-      return "DEFAULT";
-    case STVisibility.Internal:
-      return "INTERNAL";
-    case STVisibility.Hidden:
-      return "HIDDEN";
-    case STVisibility.Protected:
-      return "PROTECTED";
-    default:
-      return `${v}`;
-  }
-}
 
 // Ndx and section name as separate values.
 function ndxParts(sym: Symbol): [string, string] {
@@ -109,9 +57,9 @@ function renderVirtualTable(
       <td class="mono sym-right">${sym.index}</td>
       <td class="mono">${hexPad(sym.value, padW)}</td>
       <td class="mono sym-right">${sym.size}</td>
-      <td class="mono">${typeName(sym.type)}</td>
-      <td class="mono">${bindName(sym.bind)}</td>
-      <td class="mono">${visName(sym.visibility)}</td>
+      <td class="mono">${stTypeName(sym.type)}</td>
+      <td class="mono">${stBindName(sym.bind)}</td>
+      <td class="mono">${stVisName(sym.visibility)}</td>
       <td class="mono ndx-cell">${ndx}</td>
       <td class="mono">${section}</td>
       <td class="mono sym-name">${sym.name || ""}</td>
@@ -209,9 +157,9 @@ function renderSymbolTable(
         <td class="mono sym-right">${sym.index}</td>
         <td class="mono">${hexPad(sym.value, padW)}</td>
         <td class="mono sym-right">${sym.size}</td>
-        <td class="mono">${typeName(sym.type)}</td>
-        <td class="mono">${bindName(sym.bind)}</td>
-        <td class="mono">${visName(sym.visibility)}</td>
+        <td class="mono">${stTypeName(sym.type)}</td>
+        <td class="mono">${stBindName(sym.bind)}</td>
+        <td class="mono">${stVisName(sym.visibility)}</td>
         <td class="mono ndx-cell">${ndx}</td>
         <td class="mono">${section}</td>
         <td class="mono sym-name">${sym.name || ""}</td>
@@ -269,28 +217,18 @@ export function renderSymbols(container: HTMLElement, elf: ELFFile): void {
     }))
   );
 
-  // Append search input to the section-nav so it lives in the same sticky bar.
-  const nav = container.querySelector<HTMLElement>(".section-nav");
-  if (nav) {
-    const searchInput = document.createElement("input");
-    searchInput.type = "search";
-    searchInput.className = "search-input";
-    searchInput.placeholder = "Filter by name…";
-    searchInput.setAttribute("aria-label", "Filter symbols by name");
-    searchInput.addEventListener("input", () => {
-      currentFilter = searchInput.value;
-      const lower = currentFilter.toLowerCase();
-      for (let i = 0; i < tables.length; i++) {
-        panelUpdaters[i]?.(currentFilter);
-        const t = tables[i];
-        if (currentFilter) {
-          const n = t.syms.filter((s) => s.name.toLowerCase().includes(lower)).length;
-          subtabs.updateLabel(i, `${t.name} (${n} / ${t.syms.length})`);
-        } else {
-          subtabs.updateLabel(i, `${t.name} (${t.syms.length})`);
-        }
+  createSearchInput(container, (value) => {
+    currentFilter = value;
+    const lower = value.toLowerCase();
+    for (let i = 0; i < tables.length; i++) {
+      panelUpdaters[i]?.(currentFilter);
+      const t = tables[i];
+      if (currentFilter) {
+        const n = t.syms.filter((s) => s.name.toLowerCase().includes(lower)).length;
+        subtabs.updateLabel(i, `${t.name} (${n} / ${t.syms.length})`);
+      } else {
+        subtabs.updateLabel(i, `${t.name} (${t.syms.length})`);
       }
-    });
-    nav.appendChild(searchInput);
-  }
+    }
+  });
 }

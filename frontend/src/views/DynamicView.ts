@@ -44,7 +44,7 @@ import {
   DF_1_NOCOMMON,
 } from "../parser/types.ts";
 import { buildLayout, type LayoutDynEntry, companionToMainTag } from "./layout.ts";
-import { showContextMenu, type CtxMenuItem } from "../ui/ContextMenu.ts";
+import { attachCtxMenu, type CtxMenuItem } from "../ui/ContextMenu.ts";
 import { showTooltip, hideTooltip, moveTooltip, escapeHtml, ttRow } from "../ui/Tooltip.ts";
 import {
   dynTagName,
@@ -249,11 +249,7 @@ export function renderDynamic(
       tr.classList.add("nav-row");
       // Double-click: open first available view
       if (navTarget && onNavigate) tr.addEventListener("dblclick", () => onNavigate(navTarget));
-      tr.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        hideTooltip();
-        showContextMenu(e.clientX, e.clientY, validItems);
-      });
+      attachCtxMenu(tr, validItems, hideTooltip);
     }
 
     tbody.appendChild(tr);

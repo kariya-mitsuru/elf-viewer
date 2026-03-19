@@ -16,6 +16,7 @@ import {
   ELFMachine,
   PHType,
 } from "./types.ts";
+import { vaddrToFileOffset } from "./elf.ts";
 
 // ─── DW_EH_PE pointer encoding ───────────────────────────────────────────────
 
@@ -555,7 +556,7 @@ function parseCfiSection(
   const fdes: EhFrameFDE[] = [];
   const cieMap = new Map<number, EhFrameCIE>();
 
-  const c = fc.cursor(sectionFileOffset, sectionSize);
+  const c = fc.cursor(sectionFileOffset, sectionSize, isDebugFrame ? ".debug_frame" : ".eh_frame");
 
   while (c.remaining >= 4) {
     const recordStart = c.pos;
@@ -723,7 +724,7 @@ function parseEhFrameHdrSection(
 ): EhFrameHdr | null {
   if (sectionSize < 4) return null;
 
-  const c = fc.cursor(sectionFileOffset, sectionSize);
+  const c = fc.cursor(sectionFileOffset, sectionSize, ".eh_frame_hdr");
 
   const version = c.u8();
   if (version !== 1) return null;
@@ -752,19 +753,6 @@ function parseEhFrameHdrSection(
   }
 
   return { version, ehFramePtrEnc, fdeCountEnc, tableEnc, ehFramePtr, fdeCount, table };
-}
-
-// ─── Virtual address → file offset helper ────────────────────────────────────
-
-function vaddrToFileOffset(va: bigint, phs: ProgramHeader[]): number | null {
-  for (const ph of phs) {
-    if (ph.type !== PHType.Load) continue;
-    if (va >= ph.vaddr && va < ph.vaddr + BigInt(ph.memsz)) {
-      const off = Number(va - ph.vaddr);
-      if (off < ph.filesz) return ph.offset + off;
-    }
-  }
-  return null;
 }
 
 function estimateEhFrameSize(fileOffset: number, phs: ProgramHeader[], fileSize: number): number {

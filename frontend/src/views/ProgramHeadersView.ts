@@ -4,7 +4,7 @@
 // Program Headers view: renders all program headers (readelf -l).
 
 import { type ELFFile, PHType, SHType, SHF_TLS } from "../parser/types.ts";
-import { showContextMenu } from "../ui/ContextMenu.ts";
+import { attachCtxMenu } from "../ui/ContextMenu.ts";
 import {
   type NavTarget,
   phTypeName,
@@ -68,24 +68,22 @@ export function renderProgramHeaders(
       tr.classList.add("nav-row");
       tr.addEventListener("dblclick", () => onNavigate!(navTarget));
     }
-    tr.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      const items = [];
-      if (navTarget !== null) {
-        items.push({
-          label: `Open in ${navTargetLabel(navTarget)}`,
-          action: () => onNavigate!(navTarget),
-        });
-      }
-      if (onHexDump && ph.filesz > 0) {
-        const label = `${phTypeName(ph.type)} PH #${ph.index}`;
-        items.push({
-          label: `Hex Dump: ${label}`,
-          action: () => onHexDump(label, Number(ph.offset), Number(ph.filesz)),
-        });
-      }
-      if (items.length > 0) showContextMenu(e.clientX, e.clientY, items);
-    });
+    attachCtxMenu(tr, [
+      navTarget !== null
+        ? { label: `Open in ${navTargetLabel(navTarget)}`, action: () => onNavigate!(navTarget) }
+        : null,
+      onHexDump && ph.filesz > 0
+        ? {
+            label: `Hex Dump: ${phTypeName(ph.type)} PH #${ph.index}`,
+            action: () =>
+              onHexDump(
+                `${phTypeName(ph.type)} PH #${ph.index}`,
+                Number(ph.offset),
+                Number(ph.filesz)
+              ),
+          }
+        : null,
+    ]);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);

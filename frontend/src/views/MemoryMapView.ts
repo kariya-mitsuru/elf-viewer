@@ -16,7 +16,7 @@ import {
   type LayoutDynEntry,
   type LayoutHeaderInfo,
 } from "./layout.ts";
-import { showContextMenu, type CtxMenuItem } from "../ui/ContextMenu.ts";
+import { attachCtxMenu as attachCtxMenuBase, type CtxMenuItem } from "../ui/ContextMenu.ts";
 import { hideTooltip, addTooltipHandlers, escapeHtml, ttRow } from "../ui/Tooltip.ts";
 import {
   type NavTarget,
@@ -26,15 +26,9 @@ import {
   phNavTarget,
 } from "./viewUtils.ts";
 
-// Attach a right-click context menu to an element.
+// Wraps the shared context menu helper to always hide the tooltip before showing.
 function attachCtxMenu(el: HTMLElement, items: Array<CtxMenuItem | null>): void {
-  const valid = items.filter(Boolean) as CtxMenuItem[];
-  if (valid.length === 0) return;
-  el.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    hideTooltip();
-    showContextMenu(e.clientX, e.clientY, valid);
-  });
+  attachCtxMenuBase(el, items, hideTooltip);
 }
 
 // ─── Types for internal row representation ────────────────────────────────────

@@ -18,7 +18,12 @@
 //   - Buckets / Hash Values: filter rows by symbol name
 
 import { type ELFFile, type GnuHashTable } from "../parser/types.ts";
-import { VIRTUAL_THRESHOLD, createSubTabs, appendEmptyMessage } from "./viewUtils.ts";
+import {
+  VIRTUAL_THRESHOLD,
+  createSubTabs,
+  createSearchInput,
+  appendEmptyMessage,
+} from "./viewUtils.ts";
 import { renderBuckets } from "./hashUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 
@@ -379,36 +384,26 @@ function renderGnuHashSection(container: HTMLElement, ht: GnuHashTable): void {
     },
   ]);
 
-  // Append search input to the sub-tab section-nav.
-  const nav = container.querySelector<HTMLElement>(".section-nav");
-  if (nav) {
-    const searchInput = document.createElement("input");
-    searchInput.type = "search";
-    searchInput.className = "search-input";
-    searchInput.placeholder = "Filter by name…";
-    searchInput.setAttribute("aria-label", "Filter symbols by name");
-    searchInput.addEventListener("input", () => {
-      currentFilter = searchInput.value;
-      bloomFilterUpdater?.(currentFilter); // updates highlight + starts 300ms timer
-      bucketsUpdater?.(currentFilter);
-      hashValuesUpdater?.(currentFilter);
-      if (currentFilter) {
-        const lower = currentFilter.toLowerCase();
-        const nBuckets = ht.buckets.filter(
-          (h) => h !== 0 && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
-        ).length;
-        const nHashVals = Array.from({ length: ht.hashValues.length }, (_, i) => i).filter((i) =>
-          (ht.symNames[ht.symoffset + i] ?? "").toLowerCase().includes(lower)
-        ).length;
-        subtabs.updateLabel(1, `Buckets (${nBuckets} / ${ht.nbuckets})`);
-        subtabs.updateLabel(2, `Hash Values (${nHashVals} / ${ht.hashValues.length})`);
-      } else {
-        subtabs.updateLabel(1, `Buckets (${ht.nbuckets})`);
-        subtabs.updateLabel(2, `Hash Values (${ht.hashValues.length})`);
-      }
-    });
-    nav.appendChild(searchInput);
-  }
+  createSearchInput(container, (value) => {
+    currentFilter = value;
+    bloomFilterUpdater?.(currentFilter); // updates highlight + starts 300ms timer
+    bucketsUpdater?.(currentFilter);
+    hashValuesUpdater?.(currentFilter);
+    if (currentFilter) {
+      const lower = currentFilter.toLowerCase();
+      const nBuckets = ht.buckets.filter(
+        (h) => h !== 0 && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
+      ).length;
+      const nHashVals = Array.from({ length: ht.hashValues.length }, (_, i) => i).filter((i) =>
+        (ht.symNames[ht.symoffset + i] ?? "").toLowerCase().includes(lower)
+      ).length;
+      subtabs.updateLabel(1, `Buckets (${nBuckets} / ${ht.nbuckets})`);
+      subtabs.updateLabel(2, `Hash Values (${nHashVals} / ${ht.hashValues.length})`);
+    } else {
+      subtabs.updateLabel(1, `Buckets (${ht.nbuckets})`);
+      subtabs.updateLabel(2, `Hash Values (${ht.hashValues.length})`);
+    }
+  });
 }
 
 // ─── Top-level export ─────────────────────────────────────────────────────────

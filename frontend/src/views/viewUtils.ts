@@ -12,6 +12,9 @@ import {
   SHType,
   PHType,
   DynTag,
+  STBind,
+  STType,
+  STVisibility,
   PF_R,
   PF_W,
   PF_X,
@@ -217,6 +220,62 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHan
 }
 
 // ─── ELF name conversion functions ───────────────────────────────────────────
+
+/** Symbol binding → display name. */
+export function stBindName(b: STBind): string {
+  switch (b) {
+    case STBind.Local:
+      return "LOCAL";
+    case STBind.Global:
+      return "GLOBAL";
+    case STBind.Weak:
+      return "WEAK";
+    case STBind.GnuUnique:
+      return "UNIQUE";
+    default:
+      return `${b}`;
+  }
+}
+
+/** Symbol type → display name. */
+export function stTypeName(t: STType): string {
+  switch (t) {
+    case STType.NoType:
+      return "NOTYPE";
+    case STType.Object:
+      return "OBJECT";
+    case STType.Func:
+      return "FUNC";
+    case STType.Section:
+      return "SECTION";
+    case STType.File:
+      return "FILE";
+    case STType.Common:
+      return "COMMON";
+    case STType.Tls:
+      return "TLS";
+    case STType.GnuIfunc:
+      return "IFUNC";
+    default:
+      return `${t}`;
+  }
+}
+
+/** Symbol visibility → display name. */
+export function stVisName(v: STVisibility): string {
+  switch (v) {
+    case STVisibility.Default:
+      return "DEFAULT";
+    case STVisibility.Internal:
+      return "INTERNAL";
+    case STVisibility.Hidden:
+      return "HIDDEN";
+    case STVisibility.Protected:
+      return "PROTECTED";
+    default:
+      return `${v}`;
+  }
+}
 
 /** Section header type → display name. */
 export function shTypeName(t: SHType): string {
@@ -440,6 +499,29 @@ export function shFlagsStr(f: bigint): string {
 /** Program header flags → "RWX"-style string (spaces for missing bits). */
 export function phFlagsStr(f: number): string {
   return `${f & PF_R ? "R" : " "}${f & PF_W ? "W" : " "}${f & PF_X ? "E" : " "}`;
+}
+
+// ─── Search input factory ─────────────────────────────────────────────────────
+
+/**
+ * Creates a search input and appends it to the `.section-nav` inside `container`.
+ * Returns the input element, or null if no `.section-nav` is found.
+ */
+export function createSearchInput(
+  container: HTMLElement,
+  onInput: (value: string) => void,
+  placeholder = "Filter by name\u2026"
+): HTMLInputElement | null {
+  const nav = container.querySelector<HTMLElement>(".section-nav");
+  if (!nav) return null;
+  const input = document.createElement("input");
+  input.type = "search";
+  input.className = "search-input";
+  input.placeholder = placeholder;
+  input.setAttribute("aria-label", placeholder);
+  input.addEventListener("input", () => onInput(input.value));
+  nav.appendChild(input);
+  return input;
 }
 
 // ─── Formatting helpers ────────────────────────────────────────────────────────
