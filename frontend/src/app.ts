@@ -241,8 +241,8 @@ export class App {
           (elf.versionInfo.versionDefs.length === 0 && elf.versionInfo.versionNeeds.length === 0),
       },
       { id: "notes", label: "Notes", group: "Data", disabled: elf.notes.length === 0 },
-      { id: "eh-frame", label: ".eh_frame", group: "Data", disabled: !elf.ehFrame },
-      { id: "debug-frame", label: ".debug_frame", group: "Data", disabled: !elf.debugFrame },
+      { id: "eh-frame", label: ".eh_frame", group: "DWARF", disabled: !elf.ehFrame },
+      { id: "debug-frame", label: ".debug_frame", group: "DWARF", disabled: !elf.debugFrame },
       { id: "security", label: "Security", group: "Views" },
       { id: "memory-map", label: "Memory Map", group: "Views", disabled: isObjFile },
       {

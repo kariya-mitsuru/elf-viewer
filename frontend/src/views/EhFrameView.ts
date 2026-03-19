@@ -133,11 +133,18 @@ function renderCIE(cie: EhFrameCIE, machine: number, padW: number): HTMLElement 
 
   const info = document.createElement("table");
   info.className = "info-table eh-info";
-  const rows: [string, string][] = [
+  const rows: [string, string][] = [];
+  if (cie.addressSize > 0) {
+    rows.push(["Address size", `${cie.addressSize}`]);
+  }
+  if (cie.segmentSelectorSize > 0) {
+    rows.push(["Segment selector size", `${cie.segmentSelectorSize}`]);
+  }
+  rows.push(
     ["Code alignment factor", `${cie.codeAlignFactor}`],
     ["Data alignment factor", `${cie.dataAlignFactor}`],
-    ["Return address column", regNameStr(cie.returnAddressReg, machine)],
-  ];
+    ["Return address column", regNameStr(cie.returnAddressReg, machine)]
+  );
   if (cie.augmentation.includes("R")) {
     rows.push([
       "FDE encoding",

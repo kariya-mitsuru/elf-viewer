@@ -613,7 +613,7 @@ function parseCfiSection(
     const cieSentinel = isDebugFrame ? (extendedLength ? 0xffffffffffffffff : 0xffffffff) : 0;
 
     if (idField === cieSentinel) {
-      const cie = parseCIE(c, recordEnd, recordStart, totalRecordSize, machine);
+      const cie = parseCIE(c, recordEnd, recordStart, totalRecordSize, machine, isDebugFrame);
       cies.push(cie);
       cieMap.set(recordStart, cie);
     } else {
@@ -643,10 +643,21 @@ function parseCIE(
   end: number,
   recordStart: number,
   totalSize: number,
-  machine: ELFMachine
+  machine: ELFMachine,
+  isDebugFrame: boolean
 ): EhFrameCIE {
   const version = c.u8();
   const augmentation = c.cstring();
+
+  // DWARF v4+ .debug_frame CIEs have address_size and segment_selector_size
+  // fields after the augmentation string
+  let addressSize = 0;
+  let segmentSelectorSize = 0;
+  if (isDebugFrame && version >= 4) {
+    addressSize = c.u8();
+    segmentSelectorSize = c.u8();
+  }
+
   const codeAlignFactor = c.uleb128();
   const dataAlignFactor = c.sleb128();
   const returnAddressReg = version === 1 ? c.u8() : c.uleb128();
@@ -684,6 +695,8 @@ function parseCIE(
     length: totalSize,
     version,
     augmentation,
+    addressSize,
+    segmentSelectorSize,
     codeAlignFactor,
     dataAlignFactor,
     returnAddressReg,
@@ -710,6 +723,12 @@ function parseFDE(
   const codeAlign = cie?.codeAlignFactor ?? 1;
   const dataAlign = cie?.dataAlignFactor ?? 1;
   const lsdaEncoding = cie?.lsdaEncoding ?? DW_EH_PE_omit;
+
+  // DWARF v4+ .debug_frame: skip segment selector if present
+  const segSelSize = cie?.segmentSelectorSize ?? 0;
+  if (segSelSize > 0) {
+    c.pos += segSelSize;
+  }
 
   const pcRelAddr = sectionVaddr + BigInt(c.pos);
   const pcBegin = readEncodedValue(c, fdeEncoding, pcRelAddr, 0n);
