@@ -13,7 +13,12 @@
 //   Uses virtual scrolling when nchain > VIRTUAL_THRESHOLD.
 
 import { type ELFFile, type HashTable } from "../parser/types.ts";
-import { VIRTUAL_THRESHOLD, createSubTabs, appendEmptyMessage } from "./viewUtils.ts";
+import {
+  VIRTUAL_THRESHOLD,
+  createSubTabs,
+  createSearchInput,
+  appendEmptyMessage,
+} from "./viewUtils.ts";
 import { renderBuckets } from "./hashUtils.ts";
 import { attachVirtualScroll } from "./virtualScroll.ts";
 const STN_UNDEF = 0;
@@ -152,35 +157,25 @@ function renderHashSection(container: HTMLElement, ht: HashTable): void {
     },
   ]);
 
-  // Append search input to the Buckets/Chains section-nav.
-  const nav = container.querySelector<HTMLElement>(".section-nav");
-  if (nav) {
-    const searchInput = document.createElement("input");
-    searchInput.type = "search";
-    searchInput.className = "search-input";
-    searchInput.placeholder = "Filter by name…";
-    searchInput.setAttribute("aria-label", "Filter symbols by name");
-    searchInput.addEventListener("input", () => {
-      currentFilter = searchInput.value;
-      bucketsUpdater?.(currentFilter);
-      chainsUpdater?.(currentFilter);
-      if (currentFilter) {
-        const lower = currentFilter.toLowerCase();
-        const nBuckets = ht.buckets.filter(
-          (h) => h !== STN_UNDEF && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
-        ).length;
-        const nChains = Array.from({ length: ht.nchain }, (_, i) => i).filter((i) =>
-          (ht.symNames[i] ?? "").toLowerCase().includes(lower)
-        ).length;
-        subtabs.updateLabel(0, `Buckets (${nBuckets} / ${ht.nbucket})`);
-        subtabs.updateLabel(1, `Chains (${nChains} / ${ht.nchain})`);
-      } else {
-        subtabs.updateLabel(0, `Buckets (${ht.nbucket})`);
-        subtabs.updateLabel(1, `Chains (${ht.nchain})`);
-      }
-    });
-    nav.appendChild(searchInput);
-  }
+  createSearchInput(container, (value) => {
+    currentFilter = value;
+    bucketsUpdater?.(currentFilter);
+    chainsUpdater?.(currentFilter);
+    if (currentFilter) {
+      const lower = currentFilter.toLowerCase();
+      const nBuckets = ht.buckets.filter(
+        (h) => h !== STN_UNDEF && (ht.symNames[h] ?? "").toLowerCase().includes(lower)
+      ).length;
+      const nChains = Array.from({ length: ht.nchain }, (_, i) => i).filter((i) =>
+        (ht.symNames[i] ?? "").toLowerCase().includes(lower)
+      ).length;
+      subtabs.updateLabel(0, `Buckets (${nBuckets} / ${ht.nbucket})`);
+      subtabs.updateLabel(1, `Chains (${nChains} / ${ht.nchain})`);
+    } else {
+      subtabs.updateLabel(0, `Buckets (${ht.nbucket})`);
+      subtabs.updateLabel(1, `Chains (${ht.nchain})`);
+    }
+  });
 }
 
 // ─── Top-level export ─────────────────────────────────────────────────────────

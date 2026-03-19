@@ -55,3 +55,21 @@ export function hideContextMenu(): void {
     _dismiss = null;
   }
 }
+
+/**
+ * Attaches a right-click context menu to an element.
+ * Filters out null items and does nothing if no valid items remain.
+ */
+export function attachCtxMenu(
+  el: HTMLElement,
+  items: Array<CtxMenuItem | null>,
+  onBeforeShow?: () => void
+): void {
+  const valid = items.filter(Boolean) as CtxMenuItem[];
+  if (valid.length === 0) return;
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    onBeforeShow?.();
+    showContextMenu(e.clientX, e.clientY, valid);
+  });
+}

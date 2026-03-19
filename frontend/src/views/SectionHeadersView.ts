@@ -4,7 +4,7 @@
 // Section Headers view: renders all section headers (readelf -S).
 
 import { type ELFFile, SHType } from "../parser/types.ts";
-import { showContextMenu } from "../ui/ContextMenu.ts";
+import { attachCtxMenu } from "../ui/ContextMenu.ts";
 import {
   type NavTarget,
   sectionNavTarget,
@@ -68,24 +68,18 @@ export function renderSectionHeaders(
       tr.classList.add("nav-row");
       tr.addEventListener("dblclick", () => onNavigate!(navTarget));
     }
-    tr.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      const items = [];
-      if (navTarget !== null) {
-        items.push({
-          label: `Open in ${navTargetLabel(navTarget)}`,
-          action: () => onNavigate!(navTarget),
-        });
-      }
-      if (onHexDump && sh.type !== SHType.NoBits && Number(sh.size) > 0) {
-        const label = sh.name || `section ${sh.index}`;
-        items.push({
-          label: `Hex Dump: ${label}`,
-          action: () => onHexDump(label, Number(sh.offset), Number(sh.size)),
-        });
-      }
-      if (items.length > 0) showContextMenu(e.clientX, e.clientY, items);
-    });
+    attachCtxMenu(tr, [
+      navTarget !== null
+        ? { label: `Open in ${navTargetLabel(navTarget)}`, action: () => onNavigate!(navTarget) }
+        : null,
+      onHexDump && sh.type !== SHType.NoBits && Number(sh.size) > 0
+        ? {
+            label: `Hex Dump: ${sh.name || `section ${sh.index}`}`,
+            action: () =>
+              onHexDump(sh.name || `section ${sh.index}`, Number(sh.offset), Number(sh.size)),
+          }
+        : null,
+    ]);
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
