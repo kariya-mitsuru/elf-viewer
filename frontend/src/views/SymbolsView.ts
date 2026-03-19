@@ -42,71 +42,41 @@ function ndxParts(sym: Symbol): [string, string] {
   return [String(sym.shndx), ""];
 }
 
-// Virtual-scroll renderer: only the visible rows (+ a buffer) are in the DOM.
-// Scrolling is handled by the parent .tab-content element (no nested scrollbar).
-// Returns a setFilter function that replaces the displayed rows with a filtered subset.
-function renderVirtualTable(
-  container: HTMLElement,
-  syms: Symbol[],
+const symbolHeaderHtml = `
+  <thead><tr>
+    <th class="sym-right">Num</th><th>Value</th><th class="sym-right">Size</th><th>Type</th><th>Bind</th><th>Vis</th>
+    <th>Ndx</th><th>Section</th><th>Name</th><th>Version</th><th>Ver#</th>
+  </tr></thead>
+`;
+
+function createSymbolRow(
+  sym: Symbol,
   versionInfo: VersionInfo | null,
-  is64: boolean,
-  initialFilter: string
-): (term: string) => void {
-  const padW = is64 ? 16 : 8;
-
-  function buildRow(filtered: Symbol[], i: number): HTMLTableRowElement {
-    const sym = filtered[i];
-    const [ndx, section] = ndxParts(sym);
-    const [verName, verNum, hidden] = versionParts(sym.index, versionInfo);
-    const verNumCell = verNumCellHtml(verNum, hidden);
-    const tr = document.createElement("tr");
-    if (i % 2 === 0) {
-      tr.className = "vs-even";
-    }
-    tr.innerHTML = `
-      <td class="mono sym-right">${sym.index}</td>
-      <td class="mono">${hexPad(sym.value, padW)}</td>
-      <td class="mono sym-right">${sym.size}</td>
-      <td class="mono">${stTypeName(sym.type)}</td>
-      <td class="mono">${stBindName(sym.bind)}</td>
-      <td class="mono">${stVisName(sym.visibility)}</td>
-      <td class="mono ndx-cell">${ndx}</td>
-      <td class="mono">${section}</td>
-      <td class="mono sym-name">${sym.name || ""}</td>
-      <td class="mono sym-version">${verName}</td>
-      <td class="mono">${verNumCell}</td>
-    `;
-    return tr;
-  }
-
-  const table = document.createElement("table");
-  table.className = "data-table symbol-table symbol-virtual";
-  table.innerHTML = `
-    <thead><tr>
-      <th class="sym-right">Num</th><th>Value</th><th class="sym-right">Size</th><th>Type</th><th>Bind</th><th>Vis</th>
-      <th>Ndx</th><th>Section</th><th>Name</th><th>Version</th><th>Ver#</th>
-    </tr></thead>
-    <tbody></tbody>
+  padW: number
+): HTMLTableRowElement {
+  const [ndx, section] = ndxParts(sym);
+  const [verName, verNum, hidden] = versionParts(sym.index, versionInfo);
+  const verNumCell = verNumCellHtml(verNum, hidden);
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="mono sym-right">${sym.index}</td>
+    <td class="mono">${hexPad(sym.value, padW)}</td>
+    <td class="mono sym-right">${sym.size}</td>
+    <td class="mono">${stTypeName(sym.type)}</td>
+    <td class="mono">${stBindName(sym.bind)}</td>
+    <td class="mono">${stVisName(sym.visibility)}</td>
+    <td class="mono ndx-cell">${ndx}</td>
+    <td class="mono">${section}</td>
+    <td class="mono sym-name">${sym.name || ""}</td>
+    <td class="mono sym-version">${verName}</td>
+    <td class="mono">${verNumCell}</td>
   `;
-  container.appendChild(table);
+  return tr;
+}
 
-  function applyFilter(term: string): Symbol[] {
-    const lower = term.toLowerCase();
-    return term ? syms.filter((s) => s.name.toLowerCase().includes(lower)) : syms;
-  }
-
-  let filtered = applyFilter(initialFilter);
-  const handle = attachVirtualScroll(
-    table,
-    filtered.length,
-    (i) => buildRow(filtered, i),
-    () => container.style.display !== "none"
-  );
-
-  return (term: string) => {
-    filtered = applyFilter(term);
-    handle.update(filtered.length, (i) => buildRow(filtered, i));
-  };
+function applySymbolFilter(syms: Symbol[], term: string): Symbol[] {
+  const lower = term.toLowerCase();
+  return term ? syms.filter((s) => s.name.toLowerCase().includes(lower)) : syms;
 }
 
 // Returns a setFilter function that updates the table when the search term changes.
@@ -130,20 +100,43 @@ function renderSymbolTable(
   }
 
   const is64 = syms.some((s) => s.value > 0xffffffffn);
+  const padW = is64 ? 16 : 8;
+  const table = document.createElement("table");
 
   if (syms.length > VIRTUAL_THRESHOLD) {
-    return renderVirtualTable(container, syms, versionInfo, is64, initialFilter);
+    table.className = "data-table symbol-table symbol-virtual";
+    table.innerHTML = symbolHeaderHtml + "<tbody></tbody>";
+    container.appendChild(table);
+
+    let filtered = applySymbolFilter(syms, initialFilter);
+    const handle = attachVirtualScroll(
+      table,
+      filtered.length,
+      (i) => {
+        const tr = createSymbolRow(filtered[i], versionInfo, padW);
+        if (i % 2 === 0) {
+          tr.className = "vs-even";
+        }
+        return tr;
+      },
+      () => container.style.display !== "none"
+    );
+
+    return (term: string) => {
+      filtered = applySymbolFilter(syms, term);
+      handle.update(filtered.length, (i) => {
+        const tr = createSymbolRow(filtered[i], versionInfo, padW);
+        if (i % 2 === 0) {
+          tr.className = "vs-even";
+        }
+        return tr;
+      });
+    };
   }
 
   // Static table path (small tables).
-  const table = document.createElement("table");
   table.className = "data-table symbol-table";
-  table.innerHTML = `
-    <thead><tr>
-      <th class="sym-right">Num</th><th>Value</th><th class="sym-right">Size</th><th>Type</th><th>Bind</th><th>Vis</th>
-      <th>Ndx</th><th>Section</th><th>Name</th><th>Version</th><th>Ver#</th>
-    </tr></thead>
-  `;
+  table.innerHTML = symbolHeaderHtml;
   const tbody = document.createElement("tbody");
   table.appendChild(tbody);
   container.appendChild(table);
@@ -154,43 +147,18 @@ function renderSymbolTable(
   noResultMsg.style.display = "none";
   container.appendChild(noResultMsg);
 
-  const padW = is64 ? 16 : 8;
-
   function buildStaticRows(filtered: Symbol[]): void {
     tbody.innerHTML = "";
     for (const sym of filtered) {
-      const [ndx, section] = ndxParts(sym);
-      const [verName, verNum, hidden] = versionParts(sym.index, versionInfo);
-      const verNumCell = verNumCellHtml(verNum, hidden);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="mono sym-right">${sym.index}</td>
-        <td class="mono">${hexPad(sym.value, padW)}</td>
-        <td class="mono sym-right">${sym.size}</td>
-        <td class="mono">${stTypeName(sym.type)}</td>
-        <td class="mono">${stBindName(sym.bind)}</td>
-        <td class="mono">${stVisName(sym.visibility)}</td>
-        <td class="mono ndx-cell">${ndx}</td>
-        <td class="mono">${section}</td>
-        <td class="mono sym-name">${sym.name || ""}</td>
-        <td class="mono sym-version">${verName}</td>
-        <td class="mono">${verNumCell}</td>
-      `;
-      tbody.appendChild(tr);
+      tbody.appendChild(createSymbolRow(sym, versionInfo, padW));
     }
     noResultMsg.style.display = filtered.length === 0 ? "" : "none";
   }
 
-  buildStaticRows(
-    initialFilter
-      ? syms.filter((s) => s.name.toLowerCase().includes(initialFilter.toLowerCase()))
-      : syms
-  );
+  buildStaticRows(applySymbolFilter(syms, initialFilter));
 
   return (term: string) => {
-    const lower = term.toLowerCase();
-    const filtered = term ? syms.filter((s) => s.name.toLowerCase().includes(lower)) : syms;
-    buildStaticRows(filtered);
+    buildStaticRows(applySymbolFilter(syms, term));
   };
 }
 
