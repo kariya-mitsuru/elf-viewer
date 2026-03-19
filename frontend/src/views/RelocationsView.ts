@@ -279,64 +279,47 @@ function relocTypeName(type: number, machine: ELFMachine): string {
   return table?.[type] ?? `type(${type})`;
 }
 
-// Virtual-scroll renderer for relocation entries.
-function renderVirtualRelocationTable(
-  container: HTMLElement,
-  entries: RelocationEntry[],
-  usesDynSym: boolean,
-  versionInfo: VersionInfo | null,
-  is64: boolean,
-  hasAddend: boolean,
-  machine: ELFMachine
-): void {
-  const padW = is64 ? 16 : 8;
-
-  const table = document.createElement("table");
-  table.className = "data-table reloc-virtual";
-  table.innerHTML = `
+function relocHeaderHtml(hasAddend: boolean): string {
+  return `
     <thead><tr>
       <th>Offset</th><th>Info</th><th>Type</th><th>Sym. Value</th><th>Sym. Name</th>
       <th>Version</th><th>Ver#</th>
       ${hasAddend ? '<th class="sym-right">Addend</th>' : ""}
     </tr></thead>
-    <tbody></tbody>
   `;
-  container.appendChild(table);
+}
 
-  attachVirtualScroll(
-    table,
-    entries.length,
-    (i) => {
-      const r = entries[i];
-      const [verName, verNum, hidden] = usesDynSym
-        ? versionParts(r.symIndex, versionInfo)
-        : ["", "", false];
-      const verNumCell = verNumCellHtml(verNum, hidden);
-      const addendStr =
-        r.addend !== null && r.addend !== 0n
-          ? r.addend > 0n
-            ? `+0x${r.addend.toString(16)}`
-            : `-0x${(-r.addend).toString(16)}`
-          : "";
-      const addendCell = hasAddend ? `<td class="mono sym-right">${addendStr}</td>` : "";
-      const tr = document.createElement("tr");
-      if (i % 2 === 0) {
-        tr.className = "vs-even";
-      }
-      tr.innerHTML = `
-        <td class="mono">${hexPad(r.offset, padW)}</td>
-        <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>
-        <td class="mono">${relocTypeName(r.type, machine)}</td>
-        <td class="mono">${r.symValue ? hexPad(r.symValue, padW) : ""}</td>
-        <td class="mono">${r.symName}</td>
-        <td class="mono sym-version">${verName}</td>
-        <td class="mono">${verNumCell}</td>
-        ${addendCell}
-      `;
-      return tr;
-    },
-    () => container.style.display !== "none"
-  );
+function createRelocRow(
+  r: RelocationEntry,
+  usesDynSym: boolean,
+  versionInfo: VersionInfo | null,
+  padW: number,
+  hasAddend: boolean,
+  machine: ELFMachine
+): HTMLTableRowElement {
+  const [verName, verNum, hidden] = usesDynSym
+    ? versionParts(r.symIndex, versionInfo)
+    : ["", "", false];
+  const verNumCell = verNumCellHtml(verNum, hidden);
+  const addendStr =
+    r.addend !== null && r.addend !== 0n
+      ? r.addend > 0n
+        ? `+0x${r.addend.toString(16)}`
+        : `-0x${(-r.addend).toString(16)}`
+      : "";
+  const addendCell = hasAddend ? `<td class="mono sym-right">${addendStr}</td>` : "";
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td class="mono">${hexPad(r.offset, padW)}</td>
+    <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>
+    <td class="mono">${relocTypeName(r.type, machine)}</td>
+    <td class="mono">${r.symValue ? hexPad(r.symValue, padW) : ""}</td>
+    <td class="mono">${r.symName}</td>
+    <td class="mono sym-version">${verName}</td>
+    <td class="mono">${verNumCell}</td>
+    ${addendCell}
+  `;
+  return tr;
 }
 
 function renderRelocationSection(
@@ -352,56 +335,43 @@ function renderRelocationSection(
     return;
   }
 
-  if (section.entries.length > VIRTUAL_THRESHOLD) {
-    renderVirtualRelocationTable(
-      container,
-      section.entries,
-      section.usesDynSym,
-      versionInfo,
-      is64,
-      hasAddend,
-      machine
-    );
-    return;
-  }
-
   const padW = is64 ? 16 : 8;
   const table = document.createElement("table");
-  table.className = "data-table";
-  table.innerHTML = `
-    <thead><tr>
-      <th>Offset</th><th>Info</th><th>Type</th><th>Sym. Value</th><th>Sym. Name</th>
-      <th>Version</th><th>Ver#</th>
-      ${hasAddend ? '<th class="sym-right">Addend</th>' : ""}
-    </tr></thead>
-  `;
-  const tbody = document.createElement("tbody");
-  for (const r of section.entries) {
-    const [verName, verNum, hidden] = section.usesDynSym
-      ? versionParts(r.symIndex, versionInfo)
-      : ["", "", false];
-    const verNumCell = verNumCellHtml(verNum, hidden);
-    const addendStr =
-      r.addend !== null && r.addend !== 0n
-        ? r.addend > 0n
-          ? `+0x${r.addend.toString(16)}`
-          : `-0x${(-r.addend).toString(16)}`
-        : "";
-    const addendCell = hasAddend ? `<td class="mono sym-right">${addendStr}</td>` : "";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="mono">${hexPad(r.offset, padW)}</td>
-      <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>
-      <td class="mono">${relocTypeName(r.type, machine)}</td>
-      <td class="mono">${r.symValue ? hexPad(r.symValue, padW) : ""}</td>
-      <td class="mono">${r.symName}</td>
-      <td class="mono sym-version">${verName}</td>
-      <td class="mono">${verNumCell}</td>
-      ${addendCell}
-    `;
-    tbody.appendChild(tr);
+
+  if (section.entries.length > VIRTUAL_THRESHOLD) {
+    table.className = "data-table reloc-virtual";
+    table.innerHTML = relocHeaderHtml(hasAddend) + "<tbody></tbody>";
+
+    attachVirtualScroll(
+      table,
+      section.entries.length,
+      (i) => {
+        const tr = createRelocRow(
+          section.entries[i],
+          section.usesDynSym,
+          versionInfo,
+          padW,
+          hasAddend,
+          machine
+        );
+        if (i % 2 === 0) {
+          tr.className = "vs-even";
+        }
+        return tr;
+      },
+      () => container.style.display !== "none"
+    );
+  } else {
+    table.className = "data-table";
+    table.innerHTML = relocHeaderHtml(hasAddend);
+    const tbody = document.createElement("tbody");
+    for (const r of section.entries) {
+      tbody.appendChild(
+        createRelocRow(r, section.usesDynSym, versionInfo, padW, hasAddend, machine)
+      );
+    }
+    table.appendChild(tbody);
   }
-  table.appendChild(tbody);
   container.appendChild(table);
 }
 
