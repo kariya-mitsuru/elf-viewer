@@ -90,10 +90,14 @@ const EF_AARCH64_CHERI_PURECAP = 0x00010000;
 
 function elfFlagsStr(flags: number, machine: ELFMachine): string {
   const hex = `0x${flags.toString(16)}`;
-  if (flags === 0) return hex;
+  if (flags === 0) {
+    return hex;
+  }
   if (machine === ELFMachine.AArch64) {
     const names: string[] = [];
-    if (flags & EF_AARCH64_CHERI_PURECAP) names.push("CHERI_PURECAP");
+    if (flags & EF_AARCH64_CHERI_PURECAP) {
+      names.push("CHERI_PURECAP");
+    }
     return names.length > 0 ? `${hex} (${names.join(", ")})` : hex;
   }
   return hex;

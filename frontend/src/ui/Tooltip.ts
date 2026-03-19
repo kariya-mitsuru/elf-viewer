@@ -35,7 +35,9 @@ export function showTooltip(html: string, x: number, y: number): void {
 }
 
 export function hideTooltip(): void {
-  if (_tooltip) _tooltip.style.display = "none";
+  if (_tooltip) {
+    _tooltip.style.display = "none";
+  }
 }
 
 export function isTooltipVisible(): boolean {
@@ -44,13 +46,17 @@ export function isTooltipVisible(): boolean {
 
 /** Reposition the tooltip if it is currently visible. */
 export function moveTooltip(x: number, y: number): void {
-  if (isTooltipVisible()) positionTooltip(getTooltip(), x, y);
+  if (isTooltipVisible()) {
+    positionTooltip(getTooltip(), x, y);
+  }
 }
 
 export function addTooltipHandlers(el: HTMLElement, getHtml: () => string): void {
   el.addEventListener("mouseenter", (e) => showTooltip(getHtml(), e.clientX, e.clientY));
   el.addEventListener("mousemove", (e) => {
-    if (isTooltipVisible()) positionTooltip(getTooltip(), e.clientX, e.clientY);
+    if (isTooltipVisible()) {
+      positionTooltip(getTooltip(), e.clientX, e.clientY);
+    }
   });
   el.addEventListener("mouseleave", () => hideTooltip());
 }

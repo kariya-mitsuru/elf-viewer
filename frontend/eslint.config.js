@@ -9,6 +9,11 @@ export default tseslint.config(
   tseslint.configs.recommended,
   prettierConfig,
   {
+    rules: {
+      curly: "error",
+    },
+  },
+  {
     ignores: ["dist/**", "wailsjs/**"],
   }
 );

@@ -115,8 +115,16 @@ function detectNX(elf: ELFFile): SecurityFeature {
 function detectStackCanary(elf: ELFFile): SecurityFeature {
   const canaryNames = new Set(["__stack_chk_fail", "__stack_chk_guard", "__intel_security_cookie"]);
   const found = new Set<string>();
-  for (const s of elf.symbols) if (canaryNames.has(s.name)) found.add(s.name);
-  for (const s of elf.dynSymbols) if (canaryNames.has(s.name)) found.add(s.name);
+  for (const s of elf.symbols) {
+    if (canaryNames.has(s.name)) {
+      found.add(s.name);
+    }
+  }
+  for (const s of elf.dynSymbols) {
+    if (canaryNames.has(s.name)) {
+      found.add(s.name);
+    }
+  }
 
   const hasSymbols = elf.symbols.length > 0 || elf.dynSymbols.length > 0;
 
@@ -144,10 +152,16 @@ function detectStackCanary(elf: ELFFile): SecurityFeature {
 
 function detectFortify(elf: ELFFile): SecurityFeature {
   const fortified = new Set<string>();
-  for (const s of elf.symbols)
-    if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
-  for (const s of elf.dynSymbols)
-    if (s.name.startsWith("__") && s.name.endsWith("_chk")) fortified.add(s.name);
+  for (const s of elf.symbols) {
+    if (s.name.startsWith("__") && s.name.endsWith("_chk")) {
+      fortified.add(s.name);
+    }
+  }
+  for (const s of elf.dynSymbols) {
+    if (s.name.startsWith("__") && s.name.endsWith("_chk")) {
+      fortified.add(s.name);
+    }
+  }
 
   const hasSymbols = elf.symbols.length > 0 || elf.dynSymbols.length > 0;
 
@@ -228,7 +242,9 @@ function detectAArch64Bti(elf: ELFFile): SecurityFeature {
         const datasz = c.u32();
         const dataStart = c.pos;
         if (ptype === 0xc0000000 && datasz >= 4) {
-          if (c.u32() & 0x1) hasBtiProp = true;
+          if (c.u32() & 0x1) {
+            hasBtiProp = true;
+          }
         }
         c.pos = dataStart + ((datasz + align - 1) & ~(align - 1));
       }
@@ -236,8 +252,12 @@ function detectAArch64Bti(elf: ELFFile): SecurityFeature {
   }
 
   const details: string[] = [];
-  if (hasBtiPlt) details.push("DT_AARCH64_BTI_PLT");
-  if (hasBtiProp) details.push("GNU_PROPERTY BTI");
+  if (hasBtiPlt) {
+    details.push("DT_AARCH64_BTI_PLT");
+  }
+  if (hasBtiProp) {
+    details.push("GNU_PROPERTY BTI");
+  }
 
   return {
     name: "AArch64 BTI",
@@ -262,7 +282,9 @@ function detectAArch64Pac(elf: ELFFile): SecurityFeature {
         const datasz = c.u32();
         const dataStart = c.pos;
         if (ptype === 0xc0000000 && datasz >= 4) {
-          if (c.u32() & 0x2) hasPacProp = true;
+          if (c.u32() & 0x2) {
+            hasPacProp = true;
+          }
         }
         c.pos = dataStart + ((datasz + align - 1) & ~(align - 1));
       }
@@ -270,8 +292,12 @@ function detectAArch64Pac(elf: ELFFile): SecurityFeature {
   }
 
   const details: string[] = [];
-  if (hasPacPlt) details.push("DT_AARCH64_PAC_PLT");
-  if (hasPacProp) details.push("GNU_PROPERTY PAC");
+  if (hasPacPlt) {
+    details.push("DT_AARCH64_PAC_PLT");
+  }
+  if (hasPacProp) {
+    details.push("GNU_PROPERTY PAC");
+  }
 
   return {
     name: "AArch64 PAC",

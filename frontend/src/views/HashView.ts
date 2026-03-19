@@ -34,7 +34,9 @@ function buildChainRow(i: number, ht: HashTable): HTMLTableRowElement {
       ? `<td class="mono sym-right">${next}</td><td class="mono">${nextName}</td>`
       : `<td class="mono sym-right empty-bucket">—</td><td></td>`;
   const tr = document.createElement("tr");
-  if (i % 2 === 0) tr.className = "vs-even";
+  if (i % 2 === 0) {
+    tr.className = "vs-even";
+  }
   tr.innerHTML = `
     <td class="mono sym-right">${i}</td>
     <td class="mono">${symName}</td>
@@ -55,7 +57,9 @@ function renderChains(
   }
 
   function getFilteredIndices(term: string): number[] {
-    if (!term) return Array.from({ length: ht.nchain }, (_, i) => i);
+    if (!term) {
+      return Array.from({ length: ht.nchain }, (_, i) => i);
+    }
     const lower = term.toLowerCase();
     return Array.from({ length: ht.nchain }, (_, i) => i).filter((i) =>
       (ht.symNames[i] ?? "").toLowerCase().includes(lower)
@@ -109,7 +113,9 @@ function renderChains(
   function buildStaticRows(term: string): void {
     tbody.innerHTML = "";
     const indices = getFilteredIndices(term);
-    for (const i of indices) tbody.appendChild(buildChainRow(i, ht));
+    for (const i of indices) {
+      tbody.appendChild(buildChainRow(i, ht));
+    }
     noResultMsg.style.display = indices.length === 0 ? "" : "none";
   }
 

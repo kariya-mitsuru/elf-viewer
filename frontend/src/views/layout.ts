@@ -174,7 +174,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
 
   // Dynamic entries: address-type tags only (to mark addresses on the map)
   const dynByTag = new Map<number, bigint>();
-  for (const de of elf.dynamicEntries) dynByTag.set(de.tag as number, de.value);
+  for (const de of elf.dynamicEntries) {
+    dynByTag.set(de.tag as number, de.value);
+  }
 
   // Build address → section map for "Go to Section" navigation and hex dump
   const addrToSection = new Map<
@@ -182,13 +184,14 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
     { shIndex: number; name: string; offset: number; size: number }
   >();
   for (const seg of segments) {
-    for (const sec of seg.sections)
+    for (const sec of seg.sections) {
       addrToSection.set(sec.addr, {
         shIndex: sec.shIndex,
         name: sec.name,
         offset: sec.offset,
         size: sec.size,
       });
+    }
   }
 
   const dynamicEntries: LayoutDynEntry[] = elf.dynamicEntries
@@ -199,7 +202,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
       if (companionDefs) {
         for (const cd of companionDefs) {
           const v = dynByTag.get(cd.tag as number);
-          if (v !== undefined) companions.push({ label: cd.label, value: fmtCompanion(v, cd.fmt) });
+          if (v !== undefined) {
+            companions.push({ label: cd.label, value: fmtCompanion(v, cd.fmt) });
+          }
         }
       }
       const secInfo = addrToSection.get(de.value);
@@ -220,7 +225,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
             const seg = sorted.find(
               (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
             );
-            if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            if (seg) {
+              fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            }
           }
         }
       }
@@ -233,7 +240,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
           const seg = sorted.find(
             (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
           );
-          if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+          if (seg) {
+            fileOffset = seg.offset + Number(de.value - seg.vaddr);
+          }
         }
       }
       // DT_GNU_HASH has no size companion tag; derive from the parsed structure.
@@ -246,7 +255,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
             const seg = sorted.find(
               (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
             );
-            if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            if (seg) {
+              fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            }
           }
         }
       }
@@ -260,7 +271,9 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
             const seg = sorted.find(
               (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
             );
-            if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            if (seg) {
+              fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            }
           }
         }
       }
@@ -273,22 +286,29 @@ function buildExecLayout(elf: ELFFile, filePath: string, loadSegs: ProgramHeader
             const seg = sorted.find(
               (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
             );
-            if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            if (seg) {
+              fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            }
           }
         }
       }
       // DT_VERNEED / DT_VERDEF: variable-length linked-list structures; sizes from parser traversal.
       if (byteSize === null && elf.versionInfo) {
         let sz = 0;
-        if (de.tag === DynTag.VerNeed) sz = elf.versionInfo.verNeedByteSize;
-        else if (de.tag === DynTag.VerDef) sz = elf.versionInfo.verDefByteSize;
+        if (de.tag === DynTag.VerNeed) {
+          sz = elf.versionInfo.verNeedByteSize;
+        } else if (de.tag === DynTag.VerDef) {
+          sz = elf.versionInfo.verDefByteSize;
+        }
         if (sz > 0) {
           byteSize = sz;
           if (fileOffset === null) {
             const seg = sorted.find(
               (s) => de.value >= s.vaddr && de.value < s.vaddr + BigInt(s.filesz)
             );
-            if (seg) fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            if (seg) {
+              fileOffset = seg.offset + Number(de.value - seg.vaddr);
+            }
           }
         }
       }
@@ -366,8 +386,12 @@ function buildObjectLayout(elf: ELFFile, filePath: string): LayoutData {
 
   // Each section as its own segment
   for (const sh of elf.sectionHeaders) {
-    if (sh.type === SHType.Null || sh.size === 0) continue;
-    if (sh.type === SHType.NoBits) continue;
+    if (sh.type === SHType.Null || sh.size === 0) {
+      continue;
+    }
+    if (sh.type === SHType.NoBits) {
+      continue;
+    }
 
     segments.push({
       index: sh.index,
@@ -473,8 +497,12 @@ export function buildFileLayout(elf: ELFFile, filePath: string): LayoutData {
 
   // Each non-empty section as its own row (file offset as "address")
   for (const sh of elf.sectionHeaders) {
-    if (sh.type === SHType.Null || sh.size === 0) continue;
-    if (sh.type === SHType.NoBits) continue;
+    if (sh.type === SHType.Null || sh.size === 0) {
+      continue;
+    }
+    if (sh.type === SHType.NoBits) {
+      continue;
+    }
     segments.push({
       index: sh.index,
       vaddr: BigInt(sh.offset), // file offset used as address
@@ -548,9 +576,15 @@ function flagsToColorClass(flags: number): string {
   const r = !!(flags & PF_R);
   const w = !!(flags & PF_W);
   const x = !!(flags & PF_X);
-  if (r && x && !w) return "rx";
-  if (r && w && !x) return "rw";
-  if (r && !w && !x) return "ro";
+  if (r && x && !w) {
+    return "rx";
+  }
+  if (r && w && !x) {
+    return "rw";
+  }
+  if (r && !w && !x) {
+    return "ro";
+  }
   return "other";
 }
 
@@ -565,9 +599,15 @@ function secFlagsToColorClass(flags: bigint): string {
   const alloc = !!(flags & SHF_ALLOC);
   const write = !!(flags & SHF_WRITE);
   const exec = !!(flags & SHF_EXECINSTR);
-  if (alloc && exec) return "rx";
-  if (alloc && write) return "rw";
-  if (alloc) return "ro";
+  if (alloc && exec) {
+    return "rx";
+  }
+  if (alloc && write) {
+    return "rw";
+  }
+  if (alloc) {
+    return "ro";
+  }
   return "other";
 }
 
@@ -672,18 +712,23 @@ export const companionToMainTag: ReadonlyMap<number, number> = (() => {
   const m = new Map<number, number>();
   for (const [mainTagStr, companions] of Object.entries(COMPANION_MAP)) {
     const mainTag = Number(mainTagStr);
-    for (const { tag } of companions!) m.set(tag as number, mainTag);
+    for (const { tag } of companions!) {
+      m.set(tag as number, mainTag);
+    }
   }
   return m;
 })();
 
 function fmtCompanion(v: bigint, fmt: CompanionFmt): string {
-  if (fmt === "hex") return `0x${v.toString(16).toUpperCase()}`;
-  if (fmt === "pltrel")
+  if (fmt === "hex") {
+    return `0x${v.toString(16).toUpperCase()}`;
+  }
+  if (fmt === "pltrel") {
     return v === BigInt(DynTag.Rela)
       ? "RELA"
       : v === BigInt(DynTag.Rel)
         ? "REL"
         : `0x${v.toString(16).toUpperCase()}`;
+  }
   return String(v);
 }

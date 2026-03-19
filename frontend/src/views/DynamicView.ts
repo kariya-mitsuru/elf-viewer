@@ -218,17 +218,19 @@ export function renderDynamic(
     const navTarget = dynNavTarget(de.tag as DynTag);
     const menuItems: Array<CtxMenuItem | null> = [];
 
-    if (navTarget && onNavigate)
+    if (navTarget && onNavigate) {
       menuItems.push({
         label: `Open in ${navTargetLabel(navTarget)}`,
         action: () => onNavigate(navTarget),
       });
+    }
 
-    if (le?.shIndex !== null && le?.shIndex !== undefined && onSectionClick)
+    if (le?.shIndex !== null && le?.shIndex !== undefined && onSectionClick) {
       menuItems.push({
         label: `Go to Section Headers: ${le.sectionName ?? ""}`,
         action: () => onSectionClick(le.shIndex!),
       });
+    }
 
     if (
       le?.fileOffset !== null &&
@@ -248,7 +250,9 @@ export function renderDynamic(
     if (validItems.length > 0) {
       tr.classList.add("nav-row");
       // Double-click: open first available view
-      if (navTarget && onNavigate) tr.addEventListener("dblclick", () => onNavigate(navTarget));
+      if (navTarget && onNavigate) {
+        tr.addEventListener("dblclick", () => onNavigate(navTarget));
+      }
       attachCtxMenu(tr, validItems, hideTooltip);
     }
 

@@ -40,7 +40,9 @@ export class TabManager {
   // Replace the render function of an existing tab and force re-render.
   updateTab(id: string, render: (container: HTMLElement) => void): void {
     const tab = this.tabs.find((t) => t.id === id);
-    if (!tab) return;
+    if (!tab) {
+      return;
+    }
     tab.render = render;
     // Destroy cached wrapper so it re-renders on next activation
     const old = this.wrappers.get(id);
@@ -48,12 +50,16 @@ export class TabManager {
       old.remove();
       this.wrappers.delete(id);
     }
-    if (this.activeId === id) this.showContent(id);
+    if (this.activeId === id) {
+      this.showContent(id);
+    }
   }
 
   closeTab(id: string): void {
     const idx = this.tabs.findIndex((t) => t.id === id);
-    if (idx === -1) return;
+    if (idx === -1) {
+      return;
+    }
     this.tabs.splice(idx, 1);
     const wrapper = this.wrappers.get(id);
     if (wrapper) {
@@ -88,7 +94,9 @@ export class TabManager {
     // Create wrapper and render if not yet done
     if (!this.wrappers.has(id)) {
       const tab = this.tabs.find((t) => t.id === id);
-      if (!tab) return;
+      if (!tab) {
+        return;
+      }
 
       const wrapper = document.createElement("div");
       wrapper.className = "tab-content";
@@ -102,7 +110,9 @@ export class TabManager {
 
     // Focus the scroll container so Page Up/Down work immediately.
     const wrapper = this.wrappers.get(id);
-    if (wrapper) wrapper.focus({ preventScroll: true });
+    if (wrapper) {
+      wrapper.focus({ preventScroll: true });
+    }
   }
 
   private renderTabBar(): void {

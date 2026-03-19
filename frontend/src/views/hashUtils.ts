@@ -58,7 +58,9 @@ export function renderBuckets(
         }
       } else {
         const name = ht.symNames[head] ?? "";
-        if (term && !name.toLowerCase().includes(lower)) continue;
+        if (term && !name.toLowerCase().includes(lower)) {
+          continue;
+        }
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="mono sym-right">${i}</td>

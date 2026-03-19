@@ -22,9 +22,15 @@ function fmtHex(n: number | bigint, pad: number): string {
 function regNameStr(n: number, machine: number): string {
   // Imported from parser; simple fallback for display
   if (machine === 183 /* AArch64 */) {
-    if (n <= 30) return `r${n} (x${n})`;
-    if (n === 31) return "r31 (sp)";
-    if (n >= 64 && n <= 95) return `r${n} (v${n - 64})`;
+    if (n <= 30) {
+      return `r${n} (x${n})`;
+    }
+    if (n === 31) {
+      return "r31 (sp)";
+    }
+    if (n >= 64 && n <= 95) {
+      return `r${n} (v${n - 64})`;
+    }
     return `r${n}`;
   }
   if (machine === 62 /* X86_64 */) {
@@ -81,7 +87,9 @@ function renderHdr(container: HTMLElement, hdr: EhFrameHdr, is64: boolean): void
   }
   container.appendChild(info);
 
-  if (hdr.table.length === 0) return;
+  if (hdr.table.length === 0) {
+    return;
+  }
 
   // Binary search table
   const h3 = document.createElement("h3");
@@ -222,7 +230,9 @@ function renderRecords(
 
   // Build CIE map for FDE→CIE lookup
   const cieMap = new Map<number, EhFrameCIE>();
-  for (const cie of data.cies) cieMap.set(cie.offset, cie);
+  for (const cie of data.cies) {
+    cieMap.set(cie.offset, cie);
+  }
 
   // Merge CIEs and FDEs in offset order
   type Record = { type: "cie"; cie: EhFrameCIE } | { type: "fde"; fde: EhFrameFDE };

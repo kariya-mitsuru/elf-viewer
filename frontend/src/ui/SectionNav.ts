@@ -20,7 +20,9 @@ export function slugId(prefix: string, name: string): string {
  * Does nothing if fewer than 2 sections are given.
  */
 export function renderSectionNav(container: HTMLElement, sections: NavSection[]): void {
-  if (sections.length < 2) return;
+  if (sections.length < 2) {
+    return;
+  }
   container.classList.add("has-section-nav");
   const nav = document.createElement("nav");
   nav.className = "section-nav";

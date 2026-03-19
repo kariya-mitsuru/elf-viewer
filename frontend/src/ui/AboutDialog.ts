@@ -34,7 +34,9 @@ export function showAboutDialog(): void {
   const close = () => overlay.remove();
 
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) close();
+    if (e.target === overlay) {
+      close();
+    }
   });
   overlay.querySelector(".about-close")!.addEventListener("click", close);
 

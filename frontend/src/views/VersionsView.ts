@@ -14,13 +14,19 @@ const ID_DEFS = "ver-defs";
 
 function verDefFlagsStr(flags: number): string {
   const parts: string[] = [];
-  if (flags & VER_FLG_BASE) parts.push("BASE");
-  if (flags & VER_FLG_WEAK) parts.push("WEAK");
+  if (flags & VER_FLG_BASE) {
+    parts.push("BASE");
+  }
+  if (flags & VER_FLG_WEAK) {
+    parts.push("WEAK");
+  }
   return parts.join(" ") || "none";
 }
 
 function verNeedFlagsStr(flags: number): string {
-  if (flags & VER_FLG_WEAK) return "WEAK";
+  if (flags & VER_FLG_WEAK) {
+    return "WEAK";
+  }
   return "none";
 }
 
@@ -109,6 +115,10 @@ export function renderVersions(container: HTMLElement, elf: ELFFile): void {
   }
   renderSectionNav(container, navItems);
 
-  if (info.versionDefs.length > 0) renderVerDef(container, info.versionDefs);
-  if (info.versionNeeds.length > 0) renderVerNeed(container, info.versionNeeds);
+  if (info.versionDefs.length > 0) {
+    renderVerDef(container, info.versionDefs);
+  }
+  if (info.versionNeeds.length > 0) {
+    renderVerNeed(container, info.versionNeeds);
+  }
 }
