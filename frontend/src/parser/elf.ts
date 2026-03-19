@@ -258,9 +258,8 @@ function parseProgramHeaders(fc: Cursor, h: ELFHeader): ProgramHeader[] {
         align: c.u32(),
       });
     }
-  }
-  for (const ph of phs) {
-    if (ph.offset + ph.filesz > fc.length) {
+    const ph = phs[i];
+    if (ph.filesz > fc.length - ph.offset) {
       throw new ParseError(`Program header [${ph.index}] extends beyond end of file`);
     }
   }
@@ -329,7 +328,7 @@ function parseSectionHeaders(fc: Cursor, h: ELFHeader): SectionHeader[] {
     .filter((e) => e.type !== SHType.NoBits && e.size > 0)
     .sort((a, b) => a.offset - b.offset);
   for (const e of fileRegions) {
-    if (e.offset + e.size > fc.length) {
+    if (e.size > fc.length - e.offset) {
       throw new ParseError(`Section [${e.index}] extends beyond end of file`);
     }
   }
