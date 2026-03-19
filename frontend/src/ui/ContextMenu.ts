@@ -13,7 +13,9 @@ let _dismiss: ((e: MouseEvent) => void) | null = null;
 
 export function showContextMenu(x: number, y: number, items: CtxMenuItem[]): void {
   hideContextMenu();
-  if (items.length === 0) return;
+  if (items.length === 0) {
+    return;
+  }
 
   const menu = document.createElement("div");
   menu.className = "ctx-menu";
@@ -38,11 +40,17 @@ export function showContextMenu(x: number, y: number, items: CtxMenuItem[]): voi
   menu.style.top = `${y}px`;
   // Adjust if clipping off screen
   const rect = menu.getBoundingClientRect();
-  if (rect.right > window.innerWidth - 4) menu.style.left = `${x - rect.width}px`;
-  if (rect.bottom > window.innerHeight - 4) menu.style.top = `${y - rect.height}px`;
+  if (rect.right > window.innerWidth - 4) {
+    menu.style.left = `${x - rect.width}px`;
+  }
+  if (rect.bottom > window.innerHeight - 4) {
+    menu.style.top = `${y - rect.height}px`;
+  }
 
   _dismiss = (e: MouseEvent) => {
-    if (_menu && !_menu.contains(e.target as Node)) hideContextMenu();
+    if (_menu && !_menu.contains(e.target as Node)) {
+      hideContextMenu();
+    }
   };
   setTimeout(() => document.addEventListener("mousedown", _dismiss!), 0);
 }
@@ -66,7 +74,9 @@ export function attachCtxMenu(
   onBeforeShow?: () => void
 ): void {
   const valid = items.filter(Boolean) as CtxMenuItem[];
-  if (valid.length === 0) return;
+  if (valid.length === 0) {
+    return;
+  }
   el.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     onBeforeShow?.();

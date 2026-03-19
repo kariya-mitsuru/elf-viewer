@@ -27,10 +27,18 @@ import { attachVirtualScroll } from "./virtualScroll.ts";
 
 // Ndx and section name as separate values.
 function ndxParts(sym: Symbol): [string, string] {
-  if (sym.shndx === SHN_UNDEF) return ["UND", ""];
-  if (sym.shndx === SHN_ABS) return ["ABS", ""];
-  if (sym.shndx === SHN_COMMON) return ["COM", ""];
-  if (sym.sectionName) return [String(sym.shndx), sym.sectionName];
+  if (sym.shndx === SHN_UNDEF) {
+    return ["UND", ""];
+  }
+  if (sym.shndx === SHN_ABS) {
+    return ["ABS", ""];
+  }
+  if (sym.shndx === SHN_COMMON) {
+    return ["COM", ""];
+  }
+  if (sym.sectionName) {
+    return [String(sym.shndx), sym.sectionName];
+  }
   return [String(sym.shndx), ""];
 }
 
@@ -52,7 +60,9 @@ function renderVirtualTable(
     const [verName, verNum, hidden] = versionParts(sym.index, versionInfo);
     const verNumCell = verNumCellHtml(verNum, hidden);
     const tr = document.createElement("tr");
-    if (i % 2 === 0) tr.className = "vs-even";
+    if (i % 2 === 0) {
+      tr.className = "vs-even";
+    }
     tr.innerHTML = `
       <td class="mono sym-right">${sym.index}</td>
       <td class="mono">${hexPad(sym.value, padW)}</td>

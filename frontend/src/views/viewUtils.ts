@@ -119,14 +119,20 @@ export function versionParts(
   symIndex: number,
   versionInfo: VersionInfo | null
 ): [string, string, boolean] {
-  if (!versionInfo || symIndex >= versionInfo.symVersions.length) return ["", "", false];
+  if (!versionInfo || symIndex >= versionInfo.symVersions.length) {
+    return ["", "", false];
+  }
   const raw = versionInfo.symVersions[symIndex];
   const hidden = (raw & 0x8000) !== 0;
   const vidx = raw & 0x7fff;
-  if (vidx <= 1) return ["", "", false];
+  if (vidx <= 1) {
+    return ["", "", false];
+  }
   for (const need of versionInfo.versionNeeds) {
     for (const aux of need.aux) {
-      if (aux.other === vidx) return [`@${aux.name}`, String(vidx), hidden];
+      if (aux.other === vidx) {
+        return [`@${aux.name}`, String(vidx), hidden];
+      }
     }
   }
   for (const def of versionInfo.versionDefs) {
@@ -142,7 +148,9 @@ export function versionParts(
  * Returns an HTML string (safe — verNum is a numeric string, hidden is boolean).
  */
 export function verNumCellHtml(verNum: string, hidden: boolean): string {
-  if (!verNum) return "";
+  if (!verNum) {
+    return "";
+  }
   return `<div class="ver-num-cell"><span class="ver-num-val">${verNum}</span><span class="ver-hidden-slot">${hidden ? `<span class="ver-hidden" title="hidden">h</span>` : ""}</span></div>`;
 }
 
@@ -193,13 +201,17 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHan
   }
 
   function activate(i: number): void {
-    if (btns[i].classList.contains("active")) return;
+    if (btns[i].classList.contains("active")) {
+      return;
+    }
     for (let j = 0; j < tabs.length; j++) {
       btns[j].classList.toggle("active", j === i);
       panels[j].style.display = j === i ? "" : "none";
     }
     const sc = container.closest(".tab-content") as HTMLElement | null;
-    if (sc) sc.scrollTop = 0;
+    if (sc) {
+      sc.scrollTop = 0;
+    }
     if (!rendered.has(i)) {
       rendered.add(i);
       tabs[i].render(panels[i]);
@@ -210,11 +222,15 @@ export function createSubTabs(container: HTMLElement, tabs: SubTab[]): SubTabHan
   for (let i = 0; i < tabs.length; i++) {
     btns[i].addEventListener("click", () => activate(i));
   }
-  if (tabs.length > 0) activate(0);
+  if (tabs.length > 0) {
+    activate(0);
+  }
 
   return {
     updateLabel(i: number, label: string): void {
-      if (btns[i]) btns[i].textContent = label;
+      if (btns[i]) {
+        btns[i].textContent = label;
+      }
     },
   };
 }
@@ -474,7 +490,9 @@ export function dynTagName(tag: DynTag, machine?: ELFMachine): string {
       if (tagNum >= 0x70000000 && tagNum <= 0x7fffffff) {
         const archTable = machine === ELFMachine.AArch64 ? AARCH64_DYN_TAGS : X86_64_DYN_TAGS;
         const name = archTable[tagNum];
-        if (name) return name;
+        if (name) {
+          return name;
+        }
       }
       return `0x${tagNum.toString(16).toUpperCase()}`;
     }
@@ -486,13 +504,27 @@ export function dynTagName(tag: DynTag, machine?: ELFMachine): string {
 /** Section header flags → compact string (e.g. "WAX", "WA", returns "-" if none). */
 export function shFlagsStr(f: bigint): string {
   let s = "";
-  if (f & SHF_WRITE) s += "W";
-  if (f & SHF_ALLOC) s += "A";
-  if (f & SHF_EXECINSTR) s += "X";
-  if (f & SHF_MERGE) s += "M";
-  if (f & SHF_STRINGS) s += "S";
-  if (f & SHF_GROUP) s += "G";
-  if (f & SHF_TLS) s += "T";
+  if (f & SHF_WRITE) {
+    s += "W";
+  }
+  if (f & SHF_ALLOC) {
+    s += "A";
+  }
+  if (f & SHF_EXECINSTR) {
+    s += "X";
+  }
+  if (f & SHF_MERGE) {
+    s += "M";
+  }
+  if (f & SHF_STRINGS) {
+    s += "S";
+  }
+  if (f & SHF_GROUP) {
+    s += "G";
+  }
+  if (f & SHF_TLS) {
+    s += "T";
+  }
   return s || "-";
 }
 
@@ -513,7 +545,9 @@ export function createSearchInput(
   placeholder = "Filter by name\u2026"
 ): HTMLInputElement | null {
   const nav = container.querySelector<HTMLElement>(".section-nav");
-  if (!nav) return null;
+  if (!nav) {
+    return null;
+  }
   const input = document.createElement("input");
   input.type = "search";
   input.className = "search-input";
@@ -558,7 +592,9 @@ export function phNavTarget(t: PHType): NavTarget | null {
 
 /** Returns true if the ELF is a PIE executable (ET_DYN with DF_1_PIE set). */
 export function isPIE(elf: ELFFile): boolean {
-  if (elf.header.type !== ELFType.Dyn) return false;
+  if (elf.header.type !== ELFType.Dyn) {
+    return false;
+  }
   return elf.dynamicEntries.some(
     (e) => e.tag === DynTag.Flags1 && (e.value & BigInt(DF_1_PIE)) !== 0n
   );

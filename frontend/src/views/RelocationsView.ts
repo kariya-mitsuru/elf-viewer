@@ -320,7 +320,9 @@ function renderVirtualRelocationTable(
           : "";
       const addendCell = hasAddend ? `<td class="mono sym-right">${addendStr}</td>` : "";
       const tr = document.createElement("tr");
-      if (i % 2 === 0) tr.className = "vs-even";
+      if (i % 2 === 0) {
+        tr.className = "vs-even";
+      }
       tr.innerHTML = `
         <td class="mono">${hexPad(r.offset, padW)}</td>
         <td class="mono">${r.symIndex.toString(16).padStart(8, "0")}${r.type.toString(16).padStart(8, "0")}</td>

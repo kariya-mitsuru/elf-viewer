@@ -30,7 +30,9 @@ export function attachVirtualScroll(
   isVisible?: () => boolean
 ): VirtualScrollHandle {
   const tbody = table.tBodies[0];
-  if (!tbody) return { update() {} };
+  if (!tbody) {
+    return { update() {} };
+  }
 
   const topSpacer = document.createElement("tr");
   const botSpacer = document.createElement("tr");
@@ -48,7 +50,9 @@ export function attachVirtualScroll(
   tbody.insertBefore(probe, botSpacer);
   const measured = probe.getBoundingClientRect().height;
   tbody.removeChild(probe);
-  if (measured > 0) ROW_H = measured;
+  if (measured > 0) {
+    ROW_H = measured;
+  }
 
   // Mutable state so update() can replace the data source.
   const state = { count, buildRow };
@@ -62,7 +66,9 @@ export function attachVirtualScroll(
 
   // Walk up the DOM to find the nearest overflow: auto/scroll ancestor.
   function getScrollEl(): Element | null {
-    if (scrollEl) return scrollEl;
+    if (scrollEl) {
+      return scrollEl;
+    }
     let node: Element | null = table.parentElement;
     while (node && node !== document.body) {
       const ov = getComputedStyle(node).overflowY;
@@ -76,9 +82,13 @@ export function attachVirtualScroll(
   }
 
   function render(): void {
-    if (isVisible && !isVisible()) return;
+    if (isVisible && !isVisible()) {
+      return;
+    }
     const sc = getScrollEl();
-    if (!sc) return;
+    if (!sc) {
+      return;
+    }
 
     const scRect = sc.getBoundingClientRect();
     const tRect = table.getBoundingClientRect();
@@ -89,9 +99,13 @@ export function attachVirtualScroll(
 
     const newEnd = Math.min(state.count, Math.ceil(visEnd / ROW_H) + BUFFER);
     const newStart = Math.min(newEnd, Math.max(0, Math.floor(visStart / ROW_H) - BUFFER));
-    if (newStart === rendStart && newEnd === rendEnd) return;
+    if (newStart === rendStart && newEnd === rendEnd) {
+      return;
+    }
 
-    for (const tr of renderedRows) tbody.removeChild(tr);
+    for (const tr of renderedRows) {
+      tbody.removeChild(tr);
+    }
     renderedRows = [];
 
     const frag = document.createDocumentFragment();
@@ -125,7 +139,9 @@ export function attachVirtualScroll(
 
       let rafId = 0;
       sc.addEventListener("scroll", () => {
-        if (rafId) cancelAnimationFrame(rafId);
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+        }
         rafId = requestAnimationFrame(() => {
           render();
           rafId = 0;
@@ -139,7 +155,9 @@ export function attachVirtualScroll(
       state.count = newCount;
       state.buildRow = newBuildRow;
       // Clear rendered rows and reset position before re-rendering.
-      for (const tr of renderedRows) tbody.removeChild(tr);
+      for (const tr of renderedRows) {
+        tbody.removeChild(tr);
+      }
       renderedRows = [];
       rendStart = 0;
       rendEnd = 0;
@@ -148,7 +166,9 @@ export function attachVirtualScroll(
       // Skip when hidden: the cached scroll container is shared with the visible
       // tab, so resetting scrollTop here would jump the currently-shown content.
       const sc = getScrollEl();
-      if (sc && (!isVisible || isVisible())) sc.scrollTop = 0;
+      if (sc && (!isVisible || isVisible())) {
+        sc.scrollTop = 0;
+      }
       render();
     },
   };

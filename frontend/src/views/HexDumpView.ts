@@ -27,10 +27,12 @@ function buildRows(bytes: Uint8Array, fileOffset: number, first: number, last: n
 
     const g1: string[] = [];
     const g2: string[] = [];
-    for (let j = 0; j < 8; j++)
+    for (let j = 0; j < 8; j++) {
       g1.push(j < count ? rowBytes[j].toString(16).padStart(2, "0") : "  ");
-    for (let j = 8; j < COLS; j++)
+    }
+    for (let j = 8; j < COLS; j++) {
       g2.push(j < count ? rowBytes[j].toString(16).padStart(2, "0") : "  ");
+    }
     const hexStr = `${g1.join(" ")}  ${g2.join(" ")}`;
 
     const ascii = Array.from(rowBytes)
@@ -137,7 +139,9 @@ export function renderHexDump(
   // Use rAF to coalesce rapid scroll events into one DOM update per frame.
   let rafId = 0;
   container.addEventListener("scroll", () => {
-    if (rafId) return;
+    if (rafId) {
+      return;
+    }
     rafId = requestAnimationFrame(() => {
       rafId = 0;
       renderVisible();

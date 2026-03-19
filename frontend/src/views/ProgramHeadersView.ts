@@ -116,10 +116,14 @@ export function renderProgramHeaders(
     const mtbody = document.createElement("tbody");
     for (const ph of phs) {
       const secs = elf.sectionHeaders.filter((sh) => {
-        if (!sh.name || sh.size === 0) return false;
+        if (!sh.name || sh.size === 0) {
+          return false;
+        }
         if (sh.type === SHType.NoBits) {
           // .tbss (TLS+NOBITS) only belongs to PT_TLS, not to LOAD/GNU_RELRO/etc.
-          if ((sh.flags & SHF_TLS) !== 0n && ph.type !== PHType.Tls) return false;
+          if ((sh.flags & SHF_TLS) !== 0n && ph.type !== PHType.Tls) {
+            return false;
+          }
           // Other NOBITS sections have no file content; check by virtual address
           return sh.addr >= ph.vaddr && sh.addr + BigInt(sh.size) <= ph.vaddr + BigInt(ph.memsz);
         }

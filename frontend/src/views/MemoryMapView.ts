@@ -79,7 +79,9 @@ interface SectionRow extends BaseRow {
 type Row = GapRow | SegRow | SectionRow;
 
 function rowSeg(row: Row): LayoutSegment | undefined {
-  if (row.type === "gap") return undefined;
+  if (row.type === "gap") {
+    return undefined;
+  }
   return row.seg;
 }
 
@@ -141,30 +143,41 @@ function sectionColor(cls: string, index: number, isBss: boolean): string {
 
 function makeFormatters(layout: LayoutData) {
   const segs = layout.segments;
-  if (segs.length === 0)
+  if (segs.length === 0) {
     return {
       fmtAddr: (v: bigint) => `0x${v.toString(16)}`,
       fmtOffset: null as null | ((v: number) => string),
     };
+  }
 
   let maxAddr = 0n;
   for (const s of segs) {
     const end = s.vaddr + BigInt(s.memsz);
-    if (end > maxAddr) maxAddr = end;
+    if (end > maxAddr) {
+      maxAddr = end;
+    }
   }
   const hexDigits = maxAddr.toString(16).length;
   const fmtAddr = (val: bigint) => "0x" + val.toString(16).toUpperCase().padStart(hexDigits, "0");
 
-  if (layout.isObjectFile) return { fmtAddr, fmtOffset: null };
+  if (layout.isObjectFile) {
+    return { fmtAddr, fmtOffset: null };
+  }
 
   let maxOff = 0;
   for (const s of segs) {
     for (const sec of s.sections) {
-      if (!sec.isNobits && sec.offset + sec.size > maxOff) maxOff = sec.offset + sec.size;
+      if (!sec.isNobits && sec.offset + sec.size > maxOff) {
+        maxOff = sec.offset + sec.size;
+      }
     }
-    if (s.filesz > 0 && s.fileOff + s.filesz > maxOff) maxOff = s.fileOff + s.filesz;
+    if (s.filesz > 0 && s.fileOff + s.filesz > maxOff) {
+      maxOff = s.fileOff + s.filesz;
+    }
   }
-  if (maxOff === 0) return { fmtAddr, fmtOffset: null };
+  if (maxOff === 0) {
+    return { fmtAddr, fmtOffset: null };
+  }
   const offDigits = maxOff.toString(16).length;
   const fmtOffset = (val: number) =>
     "(0x" + val.toString(16).toUpperCase().padStart(offDigits, "0") + ")";
@@ -446,7 +459,9 @@ function buildRows(
 }
 
 function splitAtNonLoad(rows: Row[], nonLoad: LayoutNonLoad[]): void {
-  if (nonLoad.length === 0) return;
+  if (nonLoad.length === 0) {
+    return;
+  }
   const splitPoints = new Set<bigint>();
   for (const ns of nonLoad) {
     // Use filesz for the end boundary (not memsz), so BSS-like extensions (e.g.
@@ -461,11 +476,15 @@ function splitAtNonLoad(rows: Row[], nonLoad: LayoutNonLoad[]): void {
 
   for (let r = rows.length - 1; r >= 0; r--) {
     const row = rows[r];
-    if (row.type !== "section" && row.type !== "no-section-segment") continue;
+    if (row.type !== "section" && row.type !== "no-section-segment") {
+      continue;
+    }
     const { start: rowStart, end: rowEnd } = getRowAddrRange(row)!;
 
     const points = sorted.filter((p) => p > rowStart && p < rowEnd);
-    if (points.length === 0) continue;
+    if (points.length === 0) {
+      continue;
+    }
     const boundaries = [rowStart, ...points, rowEnd];
     const newRows: Row[] = [];
     if (row.type === "no-section-segment") {
@@ -506,22 +525,30 @@ function splitAtNonLoad(rows: Row[], nonLoad: LayoutNonLoad[]): void {
 }
 
 function splitAtDynamicEntries(rows: Row[], dynEntries: LayoutDynEntry[]): void {
-  if (dynEntries.length === 0) return;
+  if (dynEntries.length === 0) {
+    return;
+  }
   const splitPoints = new Set<bigint>();
   for (const de of dynEntries) {
     splitPoints.add(de.addr);
-    if (de.byteSize !== null && de.byteSize > 0) splitPoints.add(de.addr + BigInt(de.byteSize));
+    if (de.byteSize !== null && de.byteSize > 0) {
+      splitPoints.add(de.addr + BigInt(de.byteSize));
+    }
   }
   const sorted = [...splitPoints].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   for (let r = rows.length - 1; r >= 0; r--) {
     const row = rows[r];
-    if (row.type !== "no-section-segment") continue;
+    if (row.type !== "no-section-segment") {
+      continue;
+    }
     const sr = row as SegRow;
     const rowStart = sr.splitAddr ?? sr.seg.vaddr;
     const rowEnd = rowStart + (sr.splitSize ?? BigInt(sr.seg.memsz));
     const points = sorted.filter((p) => p > rowStart && p < rowEnd);
-    if (points.length === 0) continue;
+    if (points.length === 0) {
+      continue;
+    }
     const boundaries = [rowStart, ...points, rowEnd];
     const newRows: Row[] = boundaries.slice(0, -1).map((addr, i) => {
       const size = boundaries[i + 1] - addr;
@@ -557,13 +584,19 @@ function assignLanes(
       lastRow = -1;
     for (let r = 0; r < rows.length; r++) {
       const range = getRowAddrRange(rows[r]);
-      if (range === null) continue;
+      if (range === null) {
+        continue;
+      }
       if (range.start < nsEnd && range.end > nsStart) {
-        if (firstRow === -1) firstRow = r;
+        if (firstRow === -1) {
+          firstRow = r;
+        }
         lastRow = r;
       }
     }
-    if (firstRow !== -1) nlEntries.push({ ns, firstRow, lastRow, lane: -1 });
+    if (firstRow !== -1) {
+      nlEntries.push({ ns, firstRow, lastRow, lane: -1 });
+    }
   }
 
   for (const entry of nlEntries) {
@@ -572,8 +605,9 @@ function assignLanes(
       nlEntries.some(
         (o) => o.lane === lane && o.firstRow <= entry.lastRow && o.lastRow >= entry.firstRow
       )
-    )
+    ) {
       lane++;
+    }
     entry.lane = lane;
   }
   const nlLaneCount = nlEntries.length > 0 ? Math.max(...nlEntries.map((e) => e.lane)) + 1 : 0;
@@ -589,13 +623,20 @@ function buildSegSpans(
   >();
   for (let r = 0; r < rows.length; r++) {
     const seg = rowSeg(rows[r]);
-    if (!seg) continue;
+    if (!seg) {
+      continue;
+    }
     const idx = seg.index;
-    if (!map.has(idx)) map.set(idx, { startRow: r, endRow: r, fileRows: 0, bssRows: 0 });
+    if (!map.has(idx)) {
+      map.set(idx, { startRow: r, endRow: r, fileRows: 0, bssRows: 0 });
+    }
     const span = map.get(idx)!;
     span.endRow = r;
-    if (rows[r].isBss) span.bssRows++;
-    else span.fileRows++;
+    if (rows[r].isBss) {
+      span.bssRows++;
+    } else {
+      span.fileRows++;
+    }
   }
   return map;
 }
@@ -746,10 +787,16 @@ function renderHeaderRow(container: HTMLElement, cols: ColLayout, isObjectFile: 
   };
   const addrLabel = isObjectFile ? "File Offset" : "Address";
   addH(addrLabel, "1");
-  if (cols.offset !== null) addH("File Offset", String(cols.offset));
-  if (cols.sections !== null) addH("Sections", String(cols.sections));
+  if (cols.offset !== null) {
+    addH("File Offset", String(cols.offset));
+  }
+  if (cols.sections !== null) {
+    addH("Sections", String(cols.sections));
+  }
   if (!isObjectFile) {
-    if (cols.dynamic !== null) addH("Dynamic", String(cols.dynamic));
+    if (cols.dynamic !== null) {
+      addH("Dynamic", String(cols.dynamic));
+    }
     addH("Program Headers", `${cols.nlBase} / -2`);
     addH(addrLabel, "-2");
   }
@@ -779,7 +826,9 @@ function renderRows(
     const gridRow = r + 2;
 
     const dim = isObjectFile && row.type !== "gap" && stripeIdx % 2 === 1;
-    if (isObjectFile && row.type !== "gap") stripeIdx++;
+    if (isObjectFile && row.type !== "gap") {
+      stripeIdx++;
+    }
 
     if (row.type === "gap") {
       placeGapRow(container, gridRow, row, fmtAddr, cols, isObjectFile);
@@ -1017,7 +1066,9 @@ function placeHeaderRow(
     const hasHex = !!onHexDump && rowSize > 0;
     if (onClick || hasHex) {
       item.style.cursor = "pointer";
-      if (onClick) item.addEventListener("click", onClick);
+      if (onClick) {
+        item.addEventListener("click", onClick);
+      }
       attachCtxMenu(item, [
         onClick ? { label: `Go to ${label}`, action: onClick } : null,
         hasHex
@@ -1047,12 +1098,13 @@ function placeLeadingGapRow(
     item.className = "sec-item leading-gap";
     item.style.gridRow = String(gridRow);
     item.style.gridColumn = String(cols.sections);
-    if (dim)
+    if (dim) {
       item.style.setProperty(
         "background",
         "linear-gradient(rgba(49,50,68,0.4),rgba(49,50,68,0.4)),rgba(120,120,120,0.2)",
         "important"
       );
+    }
     item.innerHTML = `<span>(padding)</span><span style="margin-left:auto;font-size:10px;opacity:0.7">0x${row.bytes.toString(16).toUpperCase()}</span>`;
     container.appendChild(item);
   }
@@ -1112,8 +1164,9 @@ function placeSectionRow(
     const navTarget = onNavigate ? sectionNavTarget(sec.shType) : null;
     if (onSectionClick || hasHex || navTarget !== null) {
       item.style.cursor = "pointer";
-      if (onSectionClick)
+      if (onSectionClick) {
         item.addEventListener("click", () => onSectionClick(sec.shIndex, row.seg.index));
+      }
       attachCtxMenu(item, [
         onSectionClick
           ? {
@@ -1172,22 +1225,27 @@ function placeNoSectionRow(
         : bssBase;
     } else {
       item.className = "sec-item leading-gap";
-      if (dim)
+      if (dim) {
         item.style.setProperty(
           "background",
           "linear-gradient(rgba(49,50,68,0.4),rgba(49,50,68,0.4)),rgba(120,120,120,0.2)",
           "important"
         );
+      }
     }
     item.style.gridRow = String(gridRow);
     item.style.gridColumn = String(cols.sections);
-    if (seg.index < 0) item.style.color = "#cba6f7";
+    if (seg.index < 0) {
+      item.style.color = "#cba6f7";
+    }
     item.innerHTML = `<span>${escapeHtml(seg.typeName)}</span><span style="margin-left:auto;font-size:10px;opacity:0.7">0x${rowSize.toString(16).toUpperCase()}</span>`;
     const hasHex = !!onHexDump && seg.filesz > 0 && !row.isBss;
     const hexLabel = seg.typeName ?? `Segment #${seg.index}`;
     if (onClick || hasHex) {
       item.style.cursor = "pointer";
-      if (onClick) item.addEventListener("click", onClick);
+      if (onClick) {
+        item.addEventListener("click", onClick);
+      }
       attachCtxMenu(item, [
         onClick && goToLabel ? { label: `Go to ${goToLabel}`, action: onClick } : null,
         hasHex
@@ -1239,7 +1297,9 @@ function renderNonLoadOverlays(
     const navTarget = onNavigate ? phNavTarget(ns.phType) : null;
     if (onSectionClick || hasHex || navTarget !== null) {
       block.style.cursor = "pointer";
-      if (onSectionClick) block.addEventListener("click", () => onSectionClick(null, ns.index));
+      if (onSectionClick) {
+        block.addEventListener("click", () => onSectionClick(null, ns.index));
+      }
       attachCtxMenu(block, [
         onSectionClick
           ? { label: "Go to Program Headers", action: () => onSectionClick(null, ns.index) }
@@ -1286,9 +1346,13 @@ function renderDynamicEntries(
   for (const de of dynEntries) {
     for (let r = 0; r < rows.length; r++) {
       const range = getRowAddrRange(rows[r]);
-      if (range === null) continue;
+      if (range === null) {
+        continue;
+      }
       if (de.addr >= range.start && de.addr < range.end) {
-        if (!dynByRow.has(r)) dynByRow.set(r, []);
+        if (!dynByRow.has(r)) {
+          dynByRow.set(r, []);
+        }
         dynByRow.get(r)!.push(de);
         break;
       }
@@ -1306,18 +1370,20 @@ function renderDynamicEntries(
     const seenTargets = new Set<NavTarget>();
     const navItems: Array<CtxMenuItem | null> = [];
     for (const e of entries) {
-      if (onDynamicClick)
+      if (onDynamicClick) {
         navItems.push({
           label: `Go to Dynamic: ${e.tagName}`,
           action: () => onDynamicClick(e.tag),
         });
+      }
     }
     for (const e of entries) {
-      if (e.shIndex !== null && onSectionClick)
+      if (e.shIndex !== null && onSectionClick) {
         navItems.push({
           label: `Go to Section: ${e.sectionName}`,
           action: () => onSectionClick(e.shIndex!, -1),
         });
+      }
     }
     for (const e of entries) {
       const t = dynNavTarget(e.tag);
@@ -1337,7 +1403,9 @@ function renderDynamicEntries(
 
     if (navItems.length > 0) {
       cell.style.cursor = "pointer";
-      if (onDynamicClick) cell.addEventListener("click", () => onDynamicClick(entries[0].tag));
+      if (onDynamicClick) {
+        cell.addEventListener("click", () => onDynamicClick(entries[0].tag));
+      }
       attachCtxMenu(cell, navItems);
     }
     container.appendChild(cell);
@@ -1356,12 +1424,18 @@ function maybeEmitSegInfo(
   onSectionClick?: (shIndex: number | null, segIndex: number) => void,
   onHexDump?: (label: string, fileOffset: number, size: number) => void
 ): void {
-  if (isObjectFile) return;
-  if (emitted.has(seg.index)) return;
+  if (isObjectFile) {
+    return;
+  }
+  if (emitted.has(seg.index)) {
+    return;
+  }
   emitted.add(seg.index);
 
   const span = segSpans.get(seg.index);
-  if (!span) return;
+  if (!span) {
+    return;
+  }
 
   const totalRows = span.endRow - span.startRow + 1;
   const startGridRow = span.startRow + 2;
@@ -1416,7 +1490,9 @@ function maybeEmitSegInfo(
     const fpHasHex = !!onHexDump && seg.filesz > 0;
     if (onSectionClick || fpHasHex) {
       fp.style.cursor = "pointer";
-      if (onSectionClick) fp.addEventListener("click", () => onSectionClick(null, seg.index));
+      if (onSectionClick) {
+        fp.addEventListener("click", () => onSectionClick(null, seg.index));
+      }
       attachCtxMenu(fp, [
         onSectionClick
           ? { label: "Go to Program Headers", action: () => onSectionClick(null, seg.index) }
@@ -1456,7 +1532,9 @@ function maybeEmitSegInfo(
     const infoHasHex = !!onHexDump && seg.filesz > 0;
     if (onSectionClick || infoHasHex) {
       info.style.cursor = "pointer";
-      if (onSectionClick) info.addEventListener("click", () => onSectionClick(null, seg.index));
+      if (onSectionClick) {
+        info.addEventListener("click", () => onSectionClick(null, seg.index));
+      }
       attachCtxMenu(info, [
         onSectionClick
           ? { label: "Go to Program Headers", action: () => onSectionClick(null, seg.index) }
@@ -1567,10 +1645,14 @@ export class MemoryMapView {
     if (!layout.isObjectFile) {
       for (let r = 0; r < rows.length; r++) {
         if (rows[r].type === "elf-header") {
-          if (elfHdrFirstRow === -1) elfHdrFirstRow = r;
+          if (elfHdrFirstRow === -1) {
+            elfHdrFirstRow = r;
+          }
           elfHdrLastRow = r;
         } else if (rows[r].type === "program-headers") {
-          if (phHdrFirstRow === -1) phHdrFirstRow = r;
+          if (phHdrFirstRow === -1) {
+            phHdrFirstRow = r;
+          }
           phHdrLastRow = r;
         }
       }
@@ -1641,7 +1723,7 @@ export class MemoryMapView {
         this.onHexDump,
         this.onNavigate
       );
-      if (hasDynEntries)
+      if (hasDynEntries) {
         renderDynamicEntries(
           mapGrid,
           rows,
@@ -1653,6 +1735,7 @@ export class MemoryMapView {
           this.onNavigate,
           this.onHexDump
         );
+      }
       if (hasElfHdrOverlay) {
         const box = document.createElement("div");
         box.className = "non-load-seg";
@@ -1662,7 +1745,9 @@ export class MemoryMapView {
         const ehHasHex = !!this.onHexDump && !!layout.headerInfo && layout.headerInfo.ehSize > 0;
         if (this.onElfHeaderClick || ehHasHex) {
           box.style.cursor = "pointer";
-          if (this.onElfHeaderClick) box.addEventListener("click", this.onElfHeaderClick);
+          if (this.onElfHeaderClick) {
+            box.addEventListener("click", this.onElfHeaderClick);
+          }
           attachCtxMenu(box, [
             this.onElfHeaderClick
               ? { label: "Go to ELF Header", action: this.onElfHeaderClick }
@@ -1688,7 +1773,9 @@ export class MemoryMapView {
         const phHasHex = !!this.onHexDump && phTableSize > 0;
         if (this.onProgHeadersClick || phHasHex) {
           box.style.cursor = "pointer";
-          if (this.onProgHeadersClick) box.addEventListener("click", this.onProgHeadersClick);
+          if (this.onProgHeadersClick) {
+            box.addEventListener("click", this.onProgHeadersClick);
+          }
           attachCtxMenu(box, [
             this.onProgHeadersClick
               ? { label: "Go to Program Headers", action: this.onProgHeadersClick }

@@ -22,6 +22,8 @@ export async function ReadFileBytes(path: string): Promise<Uint8Array> {
   const b64 = await ReadFileBytes(path);
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
   return bytes;
 }

@@ -35,7 +35,9 @@ const DW_EH_PE_datarel = 0x30;
 
 /** Human-readable name for a DW_EH_PE encoding byte. */
 function ehPeEncName(enc: number): string {
-  if (enc === DW_EH_PE_omit) return "omit";
+  if (enc === DW_EH_PE_omit) {
+    return "omit";
+  }
   const fmt = enc & 0x0f;
   const app = enc & 0x70;
   const fmtNames: Record<number, string> = {
@@ -58,9 +60,13 @@ function ehPeEncName(enc: number): string {
     0x50: "aligned",
   };
   const parts: string[] = [];
-  if (app !== 0x00) parts.push(appNames[app] ?? `app(${app.toString(16)})`);
+  if (app !== 0x00) {
+    parts.push(appNames[app] ?? `app(${app.toString(16)})`);
+  }
   parts.push(fmtNames[fmt] ?? `fmt(${fmt.toString(16)})`);
-  if (enc & 0x80) parts.push("indirect");
+  if (enc & 0x80) {
+    parts.push("indirect");
+  }
   return parts.join("+");
 }
 
@@ -70,7 +76,9 @@ function ehPeEncName(enc: number): string {
  * `dataAddr` is the base address for datarel encoding.
  */
 function readEncodedValue(c: Cursor, enc: number, pcAddr: bigint, dataAddr: bigint): bigint {
-  if (enc === DW_EH_PE_omit) return 0n;
+  if (enc === DW_EH_PE_omit) {
+    return 0n;
+  }
 
   const fmt = enc & 0x0f;
   let val: bigint;
@@ -108,8 +116,11 @@ function readEncodedValue(c: Cursor, enc: number, pcAddr: bigint, dataAddr: bigi
   }
 
   const app = enc & 0x70;
-  if (app === DW_EH_PE_pcrel) val += pcAddr;
-  else if (app === DW_EH_PE_datarel) val += dataAddr;
+  if (app === DW_EH_PE_pcrel) {
+    val += pcAddr;
+  } else if (app === DW_EH_PE_datarel) {
+    val += dataAddr;
+  }
 
   return val;
 }
@@ -185,15 +196,25 @@ const X86_64_REGS: Record<number, string> = {
 };
 
 function aarch64RegName(n: number): string {
-  if (n <= 30) return `x${n}`;
-  if (n === 31) return "sp";
-  if (n >= 64 && n <= 95) return `v${n - 64}`;
+  if (n <= 30) {
+    return `x${n}`;
+  }
+  if (n === 31) {
+    return "sp";
+  }
+  if (n >= 64 && n <= 95) {
+    return `v${n - 64}`;
+  }
   return `r${n}`;
 }
 
 function regName(n: number, machine: ELFMachine): string {
-  if (machine === ELFMachine.AArch64) return aarch64RegName(n);
-  if (machine === ELFMachine.X86_64) return X86_64_REGS[n] ?? `r${n}`;
+  if (machine === ELFMachine.AArch64) {
+    return aarch64RegName(n);
+  }
+  if (machine === ELFMachine.X86_64) {
+    return X86_64_REGS[n] ?? `r${n}`;
+  }
   return `r${n}`;
 }
 
@@ -562,18 +583,24 @@ function parseCfiSection(
     const recordStart = c.pos;
     let length = c.u32();
 
-    if (length === 0) break; // terminator
+    if (length === 0) {
+      break;
+    } // terminator
 
     let extendedLength = false;
     if (length === 0xffffffff) {
-      if (c.remaining < 8) break;
+      if (c.remaining < 8) {
+        break;
+      }
       length = Number(c.u64());
       extendedLength = true;
     }
 
     const contentStart = c.pos;
     const recordEnd = contentStart + length;
-    if (recordEnd > c.length) break;
+    if (recordEnd > c.length) {
+      break;
+    }
 
     const idSize = extendedLength ? 8 : 4;
     if (c.pos + idSize > recordEnd) {
@@ -722,12 +749,16 @@ function parseEhFrameHdrSection(
   sectionSize: number,
   sectionVaddr: bigint
 ): EhFrameHdr | null {
-  if (sectionSize < 4) return null;
+  if (sectionSize < 4) {
+    return null;
+  }
 
   const c = fc.cursor(sectionFileOffset, sectionSize, ".eh_frame_hdr");
 
   const version = c.u8();
-  if (version !== 1) return null;
+  if (version !== 1) {
+    return null;
+  }
 
   const ehFramePtrEnc = c.u8();
   const fdeCountEnc = c.u8();
@@ -757,9 +788,13 @@ function parseEhFrameHdrSection(
 
 function estimateEhFrameSize(fileOffset: number, phs: ProgramHeader[], fileSize: number): number {
   for (const ph of phs) {
-    if (ph.type !== PHType.Load) continue;
+    if (ph.type !== PHType.Load) {
+      continue;
+    }
     const segEnd = ph.offset + ph.filesz;
-    if (fileOffset >= ph.offset && fileOffset < segEnd) return segEnd - fileOffset;
+    if (fileOffset >= ph.offset && fileOffset < segEnd) {
+      return segEnd - fileOffset;
+    }
   }
   return fileSize - fileOffset;
 }
@@ -803,9 +838,13 @@ export function parseEhFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
     ehFrameSize = ehFrameSh.size;
   } else if (hdrFileOffset !== null) {
     const hdr = parseEhFrameHdrSection(fc, hdrFileOffset, hdrSize, hdrVaddr);
-    if (!hdr) return null;
+    if (!hdr) {
+      return null;
+    }
     const fo = vaddrToFileOffset(hdr.ehFramePtr, phs);
-    if (fo === null) return null;
+    if (fo === null) {
+      return null;
+    }
     ehFrameFileOffset = fo;
     ehFrameVaddr = hdr.ehFramePtr;
     ehFrameSize = estimateEhFrameSize(fo, phs, fileSize);
@@ -842,7 +881,9 @@ export function parseDebugFrame(elf: ELFFile, fc: Cursor): EhFrameData | null {
   const machine = elf.header.machine;
 
   const debugFrameSh = shs.find((s) => s.name === ".debug_frame");
-  if (!debugFrameSh || debugFrameSh.size === 0) return null;
+  if (!debugFrameSh || debugFrameSh.size === 0) {
+    return null;
+  }
 
   const { cies, fdes } = parseCfiSection(
     fc,

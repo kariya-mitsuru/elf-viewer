@@ -57,7 +57,9 @@ export class Sidebar {
       el.textContent = (item.icon ? item.icon + " " : "") + item.label;
       el.disabled = item.disabled ?? false;
       el.addEventListener("click", () => {
-        if (!item.disabled) this.onClick(item.id);
+        if (!item.disabled) {
+          this.onClick(item.id);
+        }
       });
       if (!item.disabled) {
         el.addEventListener("contextmenu", (e) => {

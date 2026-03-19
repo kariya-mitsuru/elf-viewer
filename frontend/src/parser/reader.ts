@@ -107,7 +107,9 @@ export class Cursor {
       result |= (byte & 0x7f) << shift;
       shift += 7;
     } while (byte & 0x80);
-    if (shift < 32 && byte & 0x40) result |= -(1 << shift);
+    if (shift < 32 && byte & 0x40) {
+      result |= -(1 << shift);
+    }
     return result | 0;
   }
 
@@ -116,7 +118,9 @@ export class Cursor {
   /** Read a NUL-terminated string and advance past the NUL byte. */
   cstring(): string {
     let end = this.pos;
-    while (end < this.view.byteLength && this.view.getUint8(end) !== 0) end++;
+    while (end < this.view.byteLength && this.view.getUint8(end) !== 0) {
+      end++;
+    }
     const bytes = new Uint8Array(this.view.buffer, this.view.byteOffset + this.pos, end - this.pos);
     this.pos = end + 1; // skip NUL
     return new TextDecoder().decode(bytes);
@@ -141,10 +145,11 @@ export class Cursor {
   /** Create a new Cursor at absolute offset `off` within the underlying buffer.
    *  When `label` is provided, bounds are checked and a ParseError is thrown on violation. */
   cursor(off: number, len = this.view.byteLength - off, label?: string): Cursor {
-    if (label !== undefined && (off < 0 || len < 0 || len > this.view.byteLength - off))
+    if (label !== undefined && (off < 0 || len < 0 || len > this.view.byteLength - off)) {
       throw new ParseError(
         `${label}: [${off}..+${len}] exceeds buffer size (${this.view.byteLength})`
       );
+    }
     return new Cursor(
       new DataView(this.view.buffer, this.view.byteOffset + off, len),
       this.le,

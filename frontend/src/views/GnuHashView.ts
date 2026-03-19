@@ -32,7 +32,9 @@ import { attachVirtualScroll } from "./virtualScroll.ts";
 /** elf_gnu_hash: the hash function used by DT_GNU_HASH sections. */
 function elfGnuHash(name: string): number {
   let h = 5381;
-  for (let i = 0; i < name.length; i++) h = (Math.imul(h, 33) + name.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < name.length; i++) {
+    h = (Math.imul(h, 33) + name.charCodeAt(i)) >>> 0;
+  }
   return h;
 }
 
@@ -45,7 +47,9 @@ function buildBitPatternHtml(val: bigint, bitWidth: number, hitBits: Set<number>
   // binStr[j] = bit at position (bitWidth - 1 - j) from LSB.
   let html = "";
   for (let j = 0; j < bitWidth; j++) {
-    if (j > 0 && j % 8 === 0) html += " ";
+    if (j > 0 && j % 8 === 0) {
+      html += " ";
+    }
     const bitPos = bitWidth - 1 - j;
     const char = binStr[j];
     html += hitBits.has(bitPos) ? `<span class="bloom-bit-hit">${char}</span>` : char;
@@ -90,7 +94,9 @@ function renderBloomFilter(
     let bits = val;
     let setBits = 0;
     while (bits > 0n) {
-      if (bits & 1n) setBits++;
+      if (bits & 1n) {
+        setBits++;
+      }
       bits >>= 1n;
     }
     const tr = document.createElement("tr");
@@ -134,10 +140,14 @@ function renderBloomFilter(
     let sc: Element | null = row.parentElement;
     while (sc && sc !== document.body) {
       const ov = getComputedStyle(sc).overflowY;
-      if (ov === "auto" || ov === "scroll") break;
+      if (ov === "auto" || ov === "scroll") {
+        break;
+      }
       sc = sc.parentElement;
     }
-    if (!sc) return true;
+    if (!sc) {
+      return true;
+    }
     const scRect = sc.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
     // thead itself is not sticky; only th children are (position:sticky, top:37px).
@@ -154,7 +164,9 @@ function renderBloomFilter(
 
   // Called by the tab's onActivate hook to execute any deferred scroll.
   function scrollNow(): void {
-    if (pendingScrollIdx >= 0) performScroll(pendingScrollIdx);
+    if (pendingScrollIdx >= 0) {
+      performScroll(pendingScrollIdx);
+    }
   }
 
   function applyHighlight(term: string): void {
@@ -183,7 +195,9 @@ function renderBloomFilter(
     bloomInfo.style.display = "";
     bloomInfo.textContent = `"${term}" → hash 0x${h.toString(16)}, word ${wordIdx}, bits ${bit1} & ${bit2}`;
 
-    if (!rows[wordIdx]) return;
+    if (!rows[wordIdx]) {
+      return;
+    }
 
     const word = ht.bloom[wordIdx];
     const bit1Set = (word >> BigInt(bit1)) & 1n;
@@ -216,12 +230,18 @@ function buildSymToBucket(ht: GnuHashTable): Map<number, number> {
   const map = new Map<number, number>();
   for (let b = 0; b < ht.buckets.length; b++) {
     const head = ht.buckets[b];
-    if (head === 0) continue;
+    if (head === 0) {
+      continue;
+    }
     for (let symIdx = head; ; symIdx++) {
       map.set(symIdx, b);
       const hi = symIdx - ht.symoffset;
-      if (hi < 0 || hi >= ht.hashValues.length) break;
-      if ((ht.hashValues[hi] & 1) !== 0) break; // end-of-chain marker
+      if (hi < 0 || hi >= ht.hashValues.length) {
+        break;
+      }
+      if ((ht.hashValues[hi] & 1) !== 0) {
+        break;
+      } // end-of-chain marker
     }
   }
   return map;
@@ -239,7 +259,9 @@ function buildHashValueRow(
   const bucket = symToBucket.get(symIdx);
   const bucketStr = bucket !== undefined ? String(bucket) : "—";
   const tr = document.createElement("tr");
-  if (i % 2 === 0) tr.className = "vs-even";
+  if (i % 2 === 0) {
+    tr.className = "vs-even";
+  }
   tr.innerHTML = `
     <td class="mono sym-right">${symIdx}</td>
     <td class="mono">${name}</td>
@@ -264,7 +286,9 @@ function renderHashValues(
   const symToBucket = buildSymToBucket(ht);
 
   function getFilteredIndices(term: string): number[] {
-    if (!term) return Array.from({ length: ht.hashValues.length }, (_, i) => i);
+    if (!term) {
+      return Array.from({ length: ht.hashValues.length }, (_, i) => i);
+    }
     const lower = term.toLowerCase();
     return Array.from({ length: ht.hashValues.length }, (_, i) => i).filter((i) =>
       (ht.symNames[ht.symoffset + i] ?? "").toLowerCase().includes(lower)
@@ -321,7 +345,9 @@ function renderHashValues(
   function buildStaticRows(term: string): void {
     tbody.innerHTML = "";
     const indices = getFilteredIndices(term);
-    for (const i of indices) tbody.appendChild(buildHashValueRow(i, ht, symToBucket));
+    for (const i of indices) {
+      tbody.appendChild(buildHashValueRow(i, ht, symToBucket));
+    }
     noResultMsg.style.display = indices.length === 0 ? "" : "none";
   }
 

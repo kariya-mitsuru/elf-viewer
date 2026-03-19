@@ -20,7 +20,9 @@ function scrollAndHighlight(rowId: string): void {
   requestAnimationFrame(() => {
     setTimeout(() => {
       const el = document.getElementById(rowId);
-      if (!el) return;
+      if (!el) {
+        return;
+      }
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("highlighted");
       setTimeout(() => el.classList.remove("highlighted"), 1500);
@@ -37,7 +39,9 @@ export class App {
 
   constructor() {
     const el = document.getElementById("app");
-    if (!el) throw new Error("#app element not found");
+    if (!el) {
+      throw new Error("#app element not found");
+    }
     this.root = el;
   }
 
@@ -76,15 +80,20 @@ export class App {
     `;
 
     document.getElementById("openBtn")!.addEventListener("click", () => {
-      if (isWails()) this.openViaWails();
-      else document.getElementById("fileInput")!.click();
+      if (isWails()) {
+        this.openViaWails();
+      } else {
+        document.getElementById("fileInput")!.click();
+      }
     });
     document.getElementById("aboutBtn")!.addEventListener("click", showAboutDialog);
 
     if (isWeb) {
       const fi = document.getElementById("fileInput") as HTMLInputElement;
       fi.addEventListener("change", () => {
-        if (fi.files?.[0]) this.loadFromBrowserFile(fi.files[0]);
+        if (fi.files?.[0]) {
+          this.loadFromBrowserFile(fi.files[0]);
+        }
       });
     }
   }
@@ -95,7 +104,9 @@ export class App {
     try {
       const { OpenFileDialog } = await import("./platform/wails.ts");
       const path = await OpenFileDialog();
-      if (path) await this.loadFromPath(path);
+      if (path) {
+        await this.loadFromPath(path);
+      }
     } catch (err) {
       this.showError(String(err));
     }
@@ -129,8 +140,11 @@ export class App {
       this.currentPath = filePath;
       this.renderMainView();
     } catch (err) {
-      if (err instanceof ParseError) this.showError(`ELF parse error: ${err.message}`);
-      else this.showError(String(err));
+      if (err instanceof ParseError) {
+        this.showError(`ELF parse error: ${err.message}`);
+      } else {
+        this.showError(String(err));
+      }
     }
   }
 
@@ -162,14 +176,19 @@ export class App {
     `;
 
     document.getElementById("openAnotherBtn")!.addEventListener("click", () => {
-      if (isWails()) this.openViaWails();
-      else document.getElementById("fileInput")!.click();
+      if (isWails()) {
+        this.openViaWails();
+      } else {
+        document.getElementById("fileInput")!.click();
+      }
     });
     document.getElementById("aboutBtn")!.addEventListener("click", showAboutDialog);
     if (isWeb) {
       const fi = document.getElementById("fileInput") as HTMLInputElement;
       fi.addEventListener("change", () => {
-        if (fi.files?.[0]) this.loadFromBrowserFile(fi.files[0]);
+        if (fi.files?.[0]) {
+          this.loadFromBrowserFile(fi.files[0]);
+        }
       });
     }
 
@@ -379,7 +398,9 @@ export class App {
         wrap.appendChild(mapEl);
         const view = new MemoryMapView(mapEl, elf, filePath, "file");
         view.onSectionClick = (shIndex) => {
-          if (shIndex !== null) this.openSectionHeadersTab(elf, shIndex);
+          if (shIndex !== null) {
+            this.openSectionHeadersTab(elf, shIndex);
+          }
         };
         view.onElfHeaderClick = () => this.openElfHeaderTab(elf);
         view.onProgHeadersClick = () => this.openProgHeadersTab(elf);
@@ -426,7 +447,9 @@ export class App {
       case "elf-header":
         return [{ label: "ELF Header", offset: 0, size: elf.header.ehSize }];
       case "prog-headers":
-        if (elf.header.phNum === 0) return [];
+        if (elf.header.phNum === 0) {
+          return [];
+        }
         return [
           {
             label: "Program Headers",
@@ -435,7 +458,9 @@ export class App {
           },
         ];
       case "section-headers":
-        if (elf.header.shNum === 0) return [];
+        if (elf.header.shNum === 0) {
+          return [];
+        }
         return [
           {
             label: "Section Headers",
@@ -446,54 +471,63 @@ export class App {
       case "symbols": {
         const regions: { label: string; offset: number; size: number }[] = [];
         const symtab = elf.sectionHeaders.find((s) => s.type === SHType.SymTab);
-        if (symtab && symtab.size > 0)
+        if (symtab && symtab.size > 0) {
           regions.push({
             label: symtab.name || ".symtab",
             offset: symtab.offset,
             size: symtab.size,
           });
+        }
         const dynsym = elf.sectionHeaders.find((s) => s.type === SHType.DynSym);
-        if (dynsym && dynsym.size > 0)
+        if (dynsym && dynsym.size > 0) {
           regions.push({
             label: dynsym.name || ".dynsym",
             offset: dynsym.offset,
             size: dynsym.size,
           });
-        else if (elf.dynSymFileOffset !== null && elf.dynSymByteSize > 0)
+        } else if (elf.dynSymFileOffset !== null && elf.dynSymByteSize > 0) {
           regions.push({
             label: ".dynsym",
             offset: elf.dynSymFileOffset,
             size: elf.dynSymByteSize,
           });
+        }
         return regions;
       }
       case "relocations": {
         const regions: { label: string; offset: number; size: number }[] = [];
         for (const rs of elf.relocations) {
-          if (rs.fileOffset !== null && rs.byteSize > 0)
+          if (rs.fileOffset !== null && rs.byteSize > 0) {
             regions.push({ label: rs.name, offset: rs.fileOffset, size: rs.byteSize });
+          }
         }
         return regions;
       }
       case "hash": {
         const regions: { label: string; offset: number; size: number }[] = [];
         for (const ht of elf.hashTables) {
-          if (ht.fileOffset !== null && ht.byteSize > 0)
+          if (ht.fileOffset !== null && ht.byteSize > 0) {
             regions.push({ label: ht.sectionName, offset: ht.fileOffset, size: ht.byteSize });
+          }
         }
         return regions;
       }
       case "gnu-hash": {
         const ht = elf.gnuHashTable;
-        if (!ht || ht.fileOffset === null) return [];
+        if (!ht || ht.fileOffset === null) {
+          return [];
+        }
         return [{ label: ht.sectionName, offset: ht.fileOffset, size: ht.byteSize }];
       }
       case "dynamic": {
         const sh = elf.sectionHeaders.find((s) => s.type === SHType.Dynamic);
-        if (sh && sh.size > 0)
+        if (sh && sh.size > 0) {
           return [{ label: sh.name || ".dynamic", offset: sh.offset, size: sh.size }];
+        }
         const ph = elf.programHeaders.find((p) => p.type === PHType.Dynamic);
-        if (ph && ph.filesz > 0) return [{ label: ".dynamic", offset: ph.offset, size: ph.filesz }];
+        if (ph && ph.filesz > 0) {
+          return [{ label: ".dynamic", offset: ph.offset, size: ph.filesz }];
+        }
         return [];
       }
       case "versions": {
@@ -504,42 +538,48 @@ export class App {
               sh.type === SHType.GnuVerNeed ||
               sh.type === SHType.GnuVerDef) &&
             sh.size > 0
-          )
+          ) {
             regions.push({ label: sh.name, offset: sh.offset, size: sh.size });
+          }
         }
         if (regions.length === 0 && elf.versionInfo) {
           const vi = elf.versionInfo;
-          if (vi.verSymFileOffset !== null && vi.verSymByteSize > 0)
+          if (vi.verSymFileOffset !== null && vi.verSymByteSize > 0) {
             regions.push({
               label: ".gnu.version",
               offset: vi.verSymFileOffset,
               size: vi.verSymByteSize,
             });
-          if (vi.verNeedFileOffset !== null && vi.verNeedByteSize > 0)
+          }
+          if (vi.verNeedFileOffset !== null && vi.verNeedByteSize > 0) {
             regions.push({
               label: ".gnu.version_r",
               offset: vi.verNeedFileOffset,
               size: vi.verNeedByteSize,
             });
-          if (vi.verDefFileOffset !== null && vi.verDefByteSize > 0)
+          }
+          if (vi.verDefFileOffset !== null && vi.verDefByteSize > 0) {
             regions.push({
               label: ".gnu.version_d",
               offset: vi.verDefFileOffset,
               size: vi.verDefByteSize,
             });
+          }
         }
         return regions;
       }
       case "notes": {
         const regions: { label: string; offset: number; size: number }[] = [];
         for (const sh of elf.sectionHeaders) {
-          if (sh.type === SHType.Note && sh.size > 0)
+          if (sh.type === SHType.Note && sh.size > 0) {
             regions.push({ label: sh.name, offset: sh.offset, size: sh.size });
+          }
         }
         if (regions.length === 0) {
           for (const ph of elf.programHeaders) {
-            if (ph.type === PHType.Note && ph.filesz > 0)
+            if (ph.type === PHType.Note && ph.filesz > 0) {
               regions.push({ label: `PT_NOTE #${ph.index}`, offset: ph.offset, size: ph.filesz });
+            }
           }
         }
         return regions;
@@ -551,7 +591,9 @@ export class App {
 
   private showHexDumpMenu(id: string, x: number, y: number, elf: ELFFile): void {
     const regions = this.getHexDumpRegions(id, elf);
-    if (regions.length === 0) return;
+    if (regions.length === 0) {
+      return;
+    }
     showContextMenu(
       x,
       y,
@@ -612,11 +654,15 @@ export class App {
               }
             }
           );
-          if (scrollToPhIndex !== undefined) scrollAndHighlight(`ph-row-${scrollToPhIndex}`);
+          if (scrollToPhIndex !== undefined) {
+            scrollAndHighlight(`ph-row-${scrollToPhIndex}`);
+          }
         });
       },
     });
-    if (!isNew && scrollToPhIndex !== undefined) scrollAndHighlight(`ph-row-${scrollToPhIndex}`);
+    if (!isNew && scrollToPhIndex !== undefined) {
+      scrollAndHighlight(`ph-row-${scrollToPhIndex}`);
+    }
   }
 
   private openSectionHeadersTab(elf: ELFFile, scrollToShIndex?: number): void {
@@ -657,11 +703,15 @@ export class App {
               }
             }
           );
-          if (scrollToShIndex !== undefined) scrollAndHighlight(`sh-row-${scrollToShIndex}`);
+          if (scrollToShIndex !== undefined) {
+            scrollAndHighlight(`sh-row-${scrollToShIndex}`);
+          }
         });
       },
     });
-    if (!isNew && scrollToShIndex !== undefined) scrollAndHighlight(`sh-row-${scrollToShIndex}`);
+    if (!isNew && scrollToShIndex !== undefined) {
+      scrollAndHighlight(`sh-row-${scrollToShIndex}`);
+    }
   }
 
   private openSymbolsTab(elf: ELFFile): void {
@@ -751,11 +801,15 @@ export class App {
             (shIndex) => this.openSectionHeadersTab(elf, shIndex),
             (label, fileOffset, size) => this.openHexDumpTab(elf, label, fileOffset, size)
           );
-          if (scrollToTag !== undefined) scrollAndHighlight(`dyn-row-${scrollToTag}`);
+          if (scrollToTag !== undefined) {
+            scrollAndHighlight(`dyn-row-${scrollToTag}`);
+          }
         });
       },
     });
-    if (!isNew && scrollToTag !== undefined) scrollAndHighlight(`dyn-row-${scrollToTag}`);
+    if (!isNew && scrollToTag !== undefined) {
+      scrollAndHighlight(`dyn-row-${scrollToTag}`);
+    }
   }
 
   private openNotesTab(elf: ELFFile): void {

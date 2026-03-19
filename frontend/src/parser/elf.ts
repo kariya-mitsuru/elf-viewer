@@ -58,23 +58,33 @@ type StrTabFn = (idx: number) => string;
 const emptyStrTab: StrTabFn = () => "";
 
 function strTab(dv: DataView | null): StrTabFn {
-  if (!dv) return emptyStrTab;
+  if (!dv) {
+    return emptyStrTab;
+  }
   // ELF spec: empty string table only permits idx=0
   if (dv.byteLength === 0) {
     return (idx: number) => {
-      if (idx !== 0) throw new ParseError(`String table index ${idx} in empty string table`);
+      if (idx !== 0) {
+        throw new ParseError(`String table index ${idx} in empty string table`);
+      }
       return "";
     };
   }
   // ELF spec: first and last bytes of a non-empty string table must be null
-  if (dv.getUint8(0) !== 0) throw new ParseError("String table does not begin with a null byte");
-  if (dv.getUint8(dv.byteLength - 1) !== 0)
+  if (dv.getUint8(0) !== 0) {
+    throw new ParseError("String table does not begin with a null byte");
+  }
+  if (dv.getUint8(dv.byteLength - 1) !== 0) {
     throw new ParseError("String table does not end with a null byte");
+  }
   return (idx: number) => {
-    if (idx < 0 || idx >= dv.byteLength)
+    if (idx < 0 || idx >= dv.byteLength) {
       throw new ParseError(`String table index ${idx} out of range (size ${dv.byteLength})`);
+    }
     let end = idx;
-    while (dv.getUint8(end) !== 0) end++;
+    while (dv.getUint8(end) !== 0) {
+      end++;
+    }
     return decoder.decode(new Uint8Array(dv.buffer, dv.byteOffset + idx, end - idx));
   };
 }
@@ -155,10 +165,14 @@ function safeNum(v: bigint, field: string): number {
  * @throws {ParseError} if the file is too small, magic is wrong, or class/encoding is unsupported
  */
 function parseHeader(raw: Uint8Array): [ELFHeader, Cursor] {
-  if (raw.length < 64) throw new ParseError("File too small to be an ELF");
+  if (raw.length < 64) {
+    throw new ParseError("File too small to be an ELF");
+  }
 
   for (let i = 0; i < 4; i++) {
-    if (raw[i] !== ELF_MAGIC[i]) throw new ParseError("Not an ELF file (invalid magic)");
+    if (raw[i] !== ELF_MAGIC[i]) {
+      throw new ParseError("Not an ELF file (invalid magic)");
+    }
   }
 
   const cls = raw[4] as ELFClass;
@@ -208,10 +222,13 @@ function parseHeader(raw: Uint8Array): [ELFHeader, Cursor] {
  * Note: ELF32 and ELF64 have different field layouts (flags position differs).
  */
 function parseProgramHeaders(fc: Cursor, h: ELFHeader): ProgramHeader[] {
-  if (h.phNum === 0 || h.phOffset === 0) return [];
+  if (h.phNum === 0 || h.phOffset === 0) {
+    return [];
+  }
   const expectedPhEntSize = fc.is64 ? 56 : 32;
-  if (h.phEntSize !== expectedPhEntSize)
+  if (h.phEntSize !== expectedPhEntSize) {
     throw new ParseError(`Invalid e_phentsize: expected ${expectedPhEntSize}, got ${h.phEntSize}`);
+  }
   const phs: ProgramHeader[] = [];
   const base = h.phOffset;
   const c = fc.cursor(base, h.phNum * h.phEntSize, "Program header table");
@@ -243,8 +260,9 @@ function parseProgramHeaders(fc: Cursor, h: ELFHeader): ProgramHeader[] {
     }
   }
   for (const ph of phs) {
-    if (ph.offset + ph.filesz > fc.length)
+    if (ph.offset + ph.filesz > fc.length) {
       throw new ParseError(`Program header [${ph.index}] extends beyond end of file`);
+    }
   }
   return phs;
 }
@@ -261,10 +279,13 @@ type RawSectionEntry = Omit<SectionHeader, "name"> & { nameOff: number };
  * `[<nameOff>]`.
  */
 function parseSectionHeaders(fc: Cursor, h: ELFHeader): SectionHeader[] {
-  if (h.shNum === 0 || h.shOffset === 0) return [];
+  if (h.shNum === 0 || h.shOffset === 0) {
+    return [];
+  }
   const expectedShEntSize = fc.is64 ? 64 : 40;
-  if (h.shEntSize !== expectedShEntSize)
+  if (h.shEntSize !== expectedShEntSize) {
     throw new ParseError(`Invalid e_shentsize: expected ${expectedShEntSize}, got ${h.shEntSize}`);
+  }
 
   const base = h.shOffset;
 
@@ -308,14 +329,16 @@ function parseSectionHeaders(fc: Cursor, h: ELFHeader): SectionHeader[] {
     .filter((e) => e.type !== SHType.NoBits && e.size > 0)
     .sort((a, b) => a.offset - b.offset);
   for (const e of fileRegions) {
-    if (e.offset + e.size > fc.length)
+    if (e.offset + e.size > fc.length) {
       throw new ParseError(`Section [${e.index}] extends beyond end of file`);
+    }
   }
   for (let i = 0; i + 1 < fileRegions.length; i++) {
     const a = fileRegions[i],
       b = fileRegions[i + 1];
-    if (a.offset + a.size > b.offset)
+    if (a.offset + a.size > b.offset) {
       throw new ParseError(`Section [${a.index}] and section [${b.index}] overlap in file`);
+    }
   }
 
   // Resolve section name reader from e_shstrndx
@@ -351,7 +374,9 @@ function parseSectionHeaders(fc: Cursor, h: ELFHeader): SectionHeader[] {
  * sections, which have sh_size > 0 (memory size) but no file bytes.
  */
 function sectionData(sh: SectionHeader, fc: Cursor): Cursor | null {
-  if (sh.size === 0) return null;
+  if (sh.size === 0) {
+    return null;
+  }
   return fc.cursor(sh.offset, sh.size);
 }
 
@@ -367,9 +392,13 @@ export function vaddrToFileOffset(
   phs: ProgramHeader[],
   context?: string
 ): number | null {
-  if (va === null) return null;
+  if (va === null) {
+    return null;
+  }
   for (const ph of phs) {
-    if (ph.type !== PHType.Load) continue;
+    if (ph.type !== PHType.Load) {
+      continue;
+    }
     if (va >= ph.vaddr && va < ph.vaddr + BigInt(ph.filesz)) {
       return ph.offset + Number(va - ph.vaddr);
     }
@@ -449,24 +478,32 @@ function parseSymbols(
   type: SHType.SymTab | SHType.DynSym
 ): Symbol[] {
   const sh = shs.find((s) => s.type === type);
-  if (!sh) return [];
+  if (!sh) {
+    return [];
+  }
   const data = sectionData(sh, fc);
-  if (!data) return [];
-  if (sh.link >= shs.length)
+  if (!data) {
+    return [];
+  }
+  if (sh.link >= shs.length) {
     throw new ParseError(`Symbol table sh_link ${sh.link} out of range (shNum is ${shs.length})`);
+  }
   const strSh = shs[sh.link];
-  if (strSh.type !== SHType.StrTab)
+  if (strSh.type !== SHType.StrTab) {
     throw new ParseError(`Symbol table sh_link [${sh.link}] is not SHT_STRTAB (got ${strSh.type})`);
+  }
   const strtabData = strTab(sectionData(strSh, fc)?.view ?? null);
   const entSize = symEntSize(fc.is64);
-  if (sh.entsize !== entSize)
+  if (sh.entsize !== entSize) {
     throw new ParseError(
       `Symbol table sh_entsize ${sh.entsize} does not match expected ${entSize}`
     );
-  if (data.length % entSize !== 0)
+  }
+  if (data.length % entSize !== 0) {
     throw new ParseError(
       `Symbol table size ${data.length} is not a multiple of sh_entsize ${entSize}`
     );
+  }
   const count = data.length / entSize;
   return parseSymbolEntries(data, count, strtabData, shs);
 }
@@ -490,13 +527,17 @@ function parseRelTable(
     if (c.is64) {
       offset = c.u64();
       const info = c.u64();
-      if (isRela) addend = c.i64();
+      if (isRela) {
+        addend = c.i64();
+      }
       symIdx = Number(info >> 32n);
       type = Number(info & 0xffffffffn);
     } else {
       offset = BigInt(c.u32());
       const info = c.u32();
-      if (isRela) addend = BigInt(c.i32());
+      if (isRela) {
+        addend = BigInt(c.i32());
+      }
       symIdx = info >>> 8;
       type = info & 0xff;
     }
@@ -573,20 +614,26 @@ function parseRelocations(
   const sections: RelocationSection[] = [];
 
   for (const sh of shs) {
-    if (sh.type !== SHType.Rela && sh.type !== SHType.Rel && sh.type !== SHType.Relr) continue;
+    if (sh.type !== SHType.Rela && sh.type !== SHType.Rel && sh.type !== SHType.Relr) {
+      continue;
+    }
     const data = sectionData(sh, fc);
-    if (!data) continue;
+    if (!data) {
+      continue;
+    }
 
     if (sh.type === SHType.Relr) {
       const wordSize = addrSize(fc.is64);
-      if (sh.entsize !== wordSize)
+      if (sh.entsize !== wordSize) {
         throw new ParseError(
           `${sh.name}: sh_entsize ${sh.entsize} does not match expected ${wordSize}`
         );
-      if (data.length % wordSize !== 0)
+      }
+      if (data.length % wordSize !== 0) {
         throw new ParseError(
           `${sh.name}: size ${data.length} is not a multiple of sh_entsize ${wordSize}`
         );
+      }
       const count = data.length / wordSize;
       sections.push({
         name: sh.name,
@@ -598,14 +645,16 @@ function parseRelocations(
     } else {
       const isRela = sh.type === SHType.Rela;
       const entSize = relEntSize(fc.is64, isRela);
-      if (sh.entsize !== entSize)
+      if (sh.entsize !== entSize) {
         throw new ParseError(
           `${sh.name}: sh_entsize ${sh.entsize} does not match expected ${entSize}`
         );
-      if (data.length % entSize !== 0)
+      }
+      if (data.length % entSize !== 0) {
         throw new ParseError(
           `${sh.name}: size ${data.length} is not a multiple of sh_entsize ${entSize}`
         );
+      }
       const count = data.length / entSize;
       const usesDynSym = sh.link < shs.length && shs[sh.link].type === SHType.DynSym;
       const syms = usesDynSym ? dynSyms : allSyms;
@@ -633,11 +682,14 @@ function parseDynamic(
   phs: ProgramHeader[]
 ): { entries: DynamicEntry[]; strtab: StrTabFn } {
   const dynPh = phs.find((p) => p.type === PHType.Dynamic);
-  if (!dynPh) return { entries: [], strtab: emptyStrTab };
+  if (!dynPh) {
+    return { entries: [], strtab: emptyStrTab };
+  }
   const { offset: off, filesz: sz } = dynPh;
   const entSize = dynEntSize(fc.is64);
-  if (sz % entSize !== 0)
+  if (sz % entSize !== 0) {
     throw new ParseError(`PT_DYNAMIC size ${sz} is not a multiple of entsize ${entSize}`);
+  }
   // First pass: collect entries, find DT_STRTAB address
   const entries: DynamicEntry[] = [];
   let strtabOff: number | null = null;
@@ -648,16 +700,27 @@ function parseDynamic(
     const tag = (c.is64 ? safeNum(c.i64(), "DynTag") : c.i32()) as DynTag;
     const value = c.is64 ? c.u64() : BigInt(c.u32());
     entries.push({ tag, value, name: null });
-    if (tag === DynTag.Null) break;
-    if (tag === DynTag.StrTab) strtabOff = vaddrToFileOffset(value, phs, "DT_STRTAB");
-    if (tag === DynTag.StrSz) strtabSz = value;
+    if (tag === DynTag.Null) {
+      break;
+    }
+    if (tag === DynTag.StrTab) {
+      strtabOff = vaddrToFileOffset(value, phs, "DT_STRTAB");
+    }
+    if (tag === DynTag.StrSz) {
+      strtabSz = value;
+    }
   }
 
   // Resolve string table via PT_LOAD
-  if (strtabOff === null) throw new ParseError("DT_STRTAB is missing from dynamic section");
-  if (strtabSz === null) throw new ParseError("DT_STRSZ is missing from dynamic section");
-  if (BigInt(strtabOff) + strtabSz > BigInt(fc.length))
+  if (strtabOff === null) {
+    throw new ParseError("DT_STRTAB is missing from dynamic section");
+  }
+  if (strtabSz === null) {
+    throw new ParseError("DT_STRSZ is missing from dynamic section");
+  }
+  if (BigInt(strtabOff) + strtabSz > BigInt(fc.length)) {
     throw new ParseError(`DT_STRTAB [${strtabOff}..+${strtabSz}] exceeds file size (${fc.length})`);
+  }
   const strtab = strTab(fc.subView(strtabOff, Number(strtabSz)));
 
   // String-valued tags
@@ -665,7 +728,9 @@ function parseDynamic(
 
   if (strtab !== emptyStrTab) {
     for (const entry of entries) {
-      if (strTags.has(entry.tag)) entry.name = strtab(safeNum(entry.value, "DT strtab offset"));
+      if (strTags.has(entry.tag)) {
+        entry.name = strtab(safeNum(entry.value, "DT strtab offset"));
+      }
     }
   }
 
@@ -681,10 +746,14 @@ function parseDynSymbolsFromDynamic(
   count: number,
   strtab: StrTabFn
 ): Symbol[] {
-  if (count === 0) return [];
+  if (count === 0) {
+    return [];
+  }
 
   const symtabOff = vaddrToFileOffset(get(DynTag.SymTab), phs, "DT_SYMTAB");
-  if (symtabOff === null) return [];
+  if (symtabOff === null) {
+    return [];
+  }
 
   const entSize = symEntSize(fc.is64);
   const totalSize = count * entSize;
@@ -714,15 +783,19 @@ function parseRelocationsFromDynamic(
     expectedEntSz: number,
     sectionName: string
   ): { data: Cursor; count: number; fileOff: number; byteSize: number } | null {
-    if (va === null && sz === null && entSz === null) return null;
-    if (va === null || sz === null || entSz === null)
+    if (va === null && sz === null && entSz === null) {
+      return null;
+    }
+    if (va === null || sz === null || entSz === null) {
       throw new ParseError(
         `${sectionName}: incomplete dynamic tags (va=${va}, sz=${sz}, entSz=${entSz})`
       );
-    if (entSz !== BigInt(expectedEntSz))
+    }
+    if (entSz !== BigInt(expectedEntSz)) {
       throw new ParseError(
         `${sectionName}: entsize ${entSz} does not match expected ${expectedEntSz}`
       );
+    }
     const fileOff = vaddrToFileOffset(va, phs, sectionName)!;
     const byteSize = Number(sz);
     return {
@@ -742,7 +815,9 @@ function parseRelocationsFromDynamic(
   ): void {
     const entSize = relEntSize(fc.is64, isRela);
     const resolved = resolveSection(va, sz, entSz, entSize, sectionName);
-    if (resolved === null) return;
+    if (resolved === null) {
+      return;
+    }
     const { data, count, fileOff, byteSize } = resolved;
     sections.push({
       name: sectionName,
@@ -813,13 +888,17 @@ function parseNotes(shs: SectionHeader[], fc: Cursor, phs: ProgramHeader[]): Not
       const namesz = c.u32();
       const descsz = c.u32();
       const type = c.u32();
-      if (c.remaining < namesz) break;
+      if (c.remaining < namesz) {
+        break;
+      }
       const name =
         namesz > 0
           ? decoder.decode(new Uint8Array(c.view.buffer, c.view.byteOffset + c.pos, namesz - 1))
           : "";
       c.skip(align4(namesz));
-      if (c.remaining < descsz) break;
+      if (c.remaining < descsz) {
+        break;
+      }
       const desc = c.sub(descsz);
       c.skip(align4(descsz));
       notes.push({ sectionName, name, type, desc });
@@ -828,15 +907,21 @@ function parseNotes(shs: SectionHeader[], fc: Cursor, phs: ProgramHeader[]): Not
 
   // From note sections
   for (const sh of shs) {
-    if (sh.type !== SHType.Note) continue;
-    if (sh.size === 0) continue;
+    if (sh.type !== SHType.Note) {
+      continue;
+    }
+    if (sh.size === 0) {
+      continue;
+    }
     parseNoteData(fc.cursor(sh.offset, sh.size), sh.name);
   }
 
   // From PT_NOTE segments (for stripped binaries without section headers)
   if (shs.length === 0) {
     for (const ph of phs) {
-      if (ph.type !== PHType.Note) continue;
+      if (ph.type !== PHType.Note) {
+        continue;
+      }
       if (ph.offset + ph.filesz <= fc.length) {
         parseNoteData(fc.cursor(ph.offset, ph.filesz), "PT_NOTE");
       }
@@ -869,13 +954,16 @@ function parseVerNeedTable(
   const needs: VersionNeed[] = [];
   for (let i = 0; i < count && c.remaining >= VERNEED_SIZE; i++) {
     const version = c.u16();
-    if (version !== 1) throw new ParseError(`VERNEED: unsupported version ${version} (expected 1)`);
+    if (version !== 1) {
+      throw new ParseError(`VERNEED: unsupported version ${version} (expected 1)`);
+    }
     const cnt = c.u16();
     const fileIdx = c.u32();
     const auxOff = c.u32();
     const next = c.u32();
-    if (auxOff !== VERNEED_SIZE)
+    if (auxOff !== VERNEED_SIZE) {
       throw new ParseError(`VERNEED: unexpected vn_aux ${auxOff} (expected ${VERNEED_SIZE})`);
+    }
     const file = strtab(fileIdx);
     const aux: VersionNeedAux[] = [];
     for (let j = 0; j < cnt && c.remaining >= VERNAUX_SIZE; j++) {
@@ -885,13 +973,15 @@ function parseVerNeedTable(
       const nameIdx = c.u32();
       const anext = c.u32();
       aux.push({ hash, flags, other, name: strtab(nameIdx) });
-      if (j < cnt - 1 && anext !== VERNAUX_SIZE)
+      if (j < cnt - 1 && anext !== VERNAUX_SIZE) {
         throw new ParseError(`VERNAUX: unexpected vna_next ${anext} (expected ${VERNAUX_SIZE})`);
+      }
     }
     needs.push({ file, cnt, aux });
     const expectedNext = VERNEED_SIZE + cnt * VERNAUX_SIZE;
-    if (i < count - 1 && next !== expectedNext)
+    if (i < count - 1 && next !== expectedNext) {
       throw new ParseError(`VERNEED: unexpected vn_next ${next} (expected ${expectedNext})`);
+    }
   }
   return { needs, byteSize: c.pos };
 }
@@ -909,27 +999,32 @@ function parseVerDefTable(
   const defs: VersionDef[] = [];
   for (let i = 0; i < count && c.remaining >= VERDEF_SIZE; i++) {
     const version = c.u16();
-    if (version !== 1) throw new ParseError(`VERDEF: unsupported version ${version} (expected 1)`);
+    if (version !== 1) {
+      throw new ParseError(`VERDEF: unsupported version ${version} (expected 1)`);
+    }
     const flags = c.u16();
     const ndx = c.u16();
     const cnt = c.u16();
     const hash = c.u32();
     const auxOff = c.u32();
     const next = c.u32();
-    if (auxOff !== VERDEF_SIZE)
+    if (auxOff !== VERDEF_SIZE) {
       throw new ParseError(`VERDEF: unexpected vd_aux ${auxOff} (expected ${VERDEF_SIZE})`);
+    }
     const names: string[] = [];
     for (let j = 0; j < cnt && c.remaining >= VERDAUX_SIZE; j++) {
       const nameIdx = c.u32();
       const anext = c.u32();
       names.push(strtab(nameIdx));
-      if (j < cnt - 1 && anext !== VERDAUX_SIZE)
+      if (j < cnt - 1 && anext !== VERDAUX_SIZE) {
         throw new ParseError(`VERDAUX: unexpected vda_next ${anext} (expected ${VERDAUX_SIZE})`);
+      }
     }
     defs.push({ flags, ndx, hash, names });
     const expectedNext = VERDEF_SIZE + cnt * VERDAUX_SIZE;
-    if (i < count - 1 && next !== expectedNext)
+    if (i < count - 1 && next !== expectedNext) {
       throw new ParseError(`VERDEF: unexpected vd_next ${next} (expected ${expectedNext})`);
+    }
   }
   return { defs, byteSize: c.pos };
 }
@@ -954,7 +1049,9 @@ function parseVersionInfo(
   const verNeedVA = get(DynTag.VerNeed);
   const verDefVA = get(DynTag.VerDef);
 
-  if (verSymVA === null && verNeedVA === null && verDefVA === null) return null;
+  if (verSymVA === null && verNeedVA === null && verDefVA === null) {
+    return null;
+  }
 
   // DT_VERSYM: one uint16 per dynamic symbol
   let symVersions: number[] = [];
@@ -1022,21 +1119,28 @@ function parseVersionInfo(
  *   u32  chain[nchain]     — chains[i] = next sym in chain for sym i (0 = end)
  */
 function parseHashTable(c: Cursor, fileOffset: number): HashTable {
-  if (c.remaining < 8) throw new ParseError(".hash: too small for header");
+  if (c.remaining < 8) {
+    throw new ParseError(".hash: too small for header");
+  }
   const nbucket = c.u32();
   const nchain = c.u32();
 
   const needed = (nbucket + nchain) * 4;
-  if (c.remaining < needed)
+  if (c.remaining < needed) {
     throw new ParseError(
       `.hash: need ${needed} bytes for ${nbucket} buckets + ${nchain} chains, only ${c.remaining} available`
     );
+  }
 
   const buckets: number[] = [];
-  for (let i = 0; i < nbucket; i++) buckets.push(c.u32());
+  for (let i = 0; i < nbucket; i++) {
+    buckets.push(c.u32());
+  }
 
   const chains: number[] = [];
-  for (let i = 0; i < nchain; i++) chains.push(c.u32());
+  for (let i = 0; i < nchain; i++) {
+    chains.push(c.u32());
+  }
 
   return {
     sectionName: ".hash",
@@ -1054,7 +1158,9 @@ function parseHashTable(c: Cursor, fileOffset: number): HashTable {
 // ─── GNU Hash table ───────────────────────────────────────────────────────────
 
 function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
-  if (c.remaining < 16) throw new ParseError(".gnu.hash: too small for header");
+  if (c.remaining < 16) {
+    throw new ParseError(".gnu.hash: too small for header");
+  }
   const nbuckets = c.u32();
   const symoffset = c.u32();
   const bloomSize = c.u32();
@@ -1063,10 +1169,11 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
 
   const bloomBytes = bloomSize * wordSize;
   const bucketBytes = nbuckets * 4;
-  if (c.remaining < bloomBytes + bucketBytes)
+  if (c.remaining < bloomBytes + bucketBytes) {
     throw new ParseError(
       `.gnu.hash: need ${bloomBytes + bucketBytes} bytes for bloom + buckets, only ${c.remaining} available`
     );
+  }
 
   const bloom: bigint[] = [];
   for (let i = 0; i < bloomSize; i++) {
@@ -1082,11 +1189,15 @@ function parseGnuHashTable(c: Cursor, fileOffset: number): GnuHashTable {
   // gnu_hash % nbuckets). Walk buckets in order, following each chain.
   const hashValues: number[] = [];
   for (const start of buckets) {
-    if (start === 0) continue;
+    if (start === 0) {
+      continue;
+    }
     while (c.remaining >= 4) {
       const v = c.u32();
       hashValues.push(v);
-      if (v & 1) break; // end-of-chain
+      if (v & 1) {
+        break;
+      } // end-of-chain
     }
   }
 
@@ -1137,7 +1248,9 @@ export function parseELF(bytes: Uint8Array): ELFFile {
   // Step 1-2: Parse hash tables first (no dynSymbols needed)
   const hashTables: HashTable[] = [];
   const hashOff = vaddrToFileOffset(getDyn(DynTag.Hash), phs, "DT_HASH");
-  if (hashOff !== null) hashTables.push(parseHashTable(fc.cursor(hashOff), hashOff));
+  if (hashOff !== null) {
+    hashTables.push(parseHashTable(fc.cursor(hashOff), hashOff));
+  }
 
   const gnuHashOff = vaddrToFileOffset(getDyn(DynTag.GnuHash), phs, "DT_GNU_HASH");
   const gnuHashTable =
@@ -1156,8 +1269,12 @@ export function parseELF(bytes: Uint8Array): ELFFile {
 
   // Step 4: Populate symNames now that dynSymbols is ready
   const symNames = dynSymbols.map((s) => s.name);
-  for (const ht of hashTables) ht.symNames = symNames;
-  if (gnuHashTable !== null) gnuHashTable.symNames = symNames;
+  for (const ht of hashTables) {
+    ht.symNames = symNames;
+  }
+  if (gnuHashTable !== null) {
+    gnuHashTable.symNames = symNames;
+  }
 
   let relocs = parseRelocations(shs, fc, dynSymbols, symbols, header.machine);
   if (relocs.length === 0 && dynamics.length > 0) {

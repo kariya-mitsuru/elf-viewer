@@ -27,7 +27,11 @@ const STAPSDT_NOTE_TYPE: Record<number, string> = {
 function fmtX86Isa1(bits: number): string {
   const levels = ["x86-64-baseline", "x86-64-v2", "x86-64-v3", "x86-64-v4"];
   const out: string[] = [];
-  for (let i = 0; i < levels.length; i++) if (bits & (1 << i)) out.push(levels[i]);
+  for (let i = 0; i < levels.length; i++) {
+    if (bits & (1 << i)) {
+      out.push(levels[i]);
+    }
+  }
   return out.length ? out.join(", ") : `0x${bits.toString(16)}`;
 }
 
@@ -53,7 +57,11 @@ function fmtX86CompatIsa1(bits: number): string {
     "AVX512BW",
   ];
   const out: string[] = [];
-  for (let i = 0; i < names.length; i++) if (bits & (1 << i)) out.push(names[i]);
+  for (let i = 0; i < names.length; i++) {
+    if (bits & (1 << i)) {
+      out.push(names[i]);
+    }
+  }
   return out.length ? out.join(", ") : `0x${bits.toString(16)}`;
 }
 
@@ -73,7 +81,11 @@ function fmtX86Feature2(bits: number): string {
     "MASK",
   ];
   const out: string[] = [];
-  for (let i = 0; i < names.length; i++) if (bits & (1 << i)) out.push(names[i]);
+  for (let i = 0; i < names.length; i++) {
+    if (bits & (1 << i)) {
+      out.push(names[i]);
+    }
+  }
   return out.length ? out.join(", ") : `0x${bits.toString(16)}`;
 }
 
@@ -95,18 +107,30 @@ function formatOneGnuProperty(type: number, datasz: number, data: Cursor): strin
       // GNU_PROPERTY_AARCH64_FEATURE_1_AND
       const bits = u32();
       const flags: string[] = [];
-      if (bits & 0x1) flags.push("BTI");
-      if (bits & 0x2) flags.push("PAC");
+      if (bits & 0x1) {
+        flags.push("BTI");
+      }
+      if (bits & 0x2) {
+        flags.push("PAC");
+      }
       return `AArch64 feature: ${flags.length ? flags.join(", ") : `0x${bits.toString(16)}`}`;
     }
     case 0xc0000002: {
       // GNU_PROPERTY_X86_FEATURE_1_AND
       const bits = u32();
       const flags: string[] = [];
-      if (bits & 0x1) flags.push("IBT");
-      if (bits & 0x2) flags.push("SHSTK");
-      if (bits & 0x4) flags.push("LAM_U48");
-      if (bits & 0x8) flags.push("LAM_U57");
+      if (bits & 0x1) {
+        flags.push("IBT");
+      }
+      if (bits & 0x2) {
+        flags.push("SHSTK");
+      }
+      if (bits & 0x4) {
+        flags.push("LAM_U48");
+      }
+      if (bits & 0x8) {
+        flags.push("LAM_U57");
+      }
       return `x86 feature: ${flags.length ? flags.join(", ") : `0x${bits.toString(16)}`}`;
     }
     case 0xc0008000:
@@ -150,7 +174,9 @@ function formatGnuProperties(c: Cursor): string {
 
 function formatStapsdtDesc(c: Cursor): string {
   const ptrSize = c.is64 ? 8 : 4;
-  if (c.length < ptrSize * 3) return "(too short)";
+  if (c.length < ptrSize * 3) {
+    return "(too short)";
+  }
 
   const pc = c.addr();
   const base = c.addr();
@@ -167,7 +193,9 @@ function formatStapsdtDesc(c: Cursor): string {
     `location: ${h(pc)}  base: ${h(base)}` +
       (semaphore !== 0n ? `  semaphore: ${h(semaphore)}` : ""),
   ];
-  if (args) lines.push(`args: ${args}`);
+  if (args) {
+    lines.push(`args: ${args}`);
+  }
   return lines.join("<br>");
 }
 
@@ -190,15 +218,21 @@ function formatNoteDesc(note: Note, c: Cursor): string {
     }
   }
   // Hex dump for unknown
-  if (c.length === 0) return "(empty)";
+  if (c.length === 0) {
+    return "(empty)";
+  }
   const n = Math.min(c.length, 32);
   const hex = Array.from({ length: n }, () => c.u8().toString(16).padStart(2, "0")).join(" ");
   return c.length <= 32 ? hex : hex + ` ... (${c.length} bytes)`;
 }
 
 function noteTypeName(name: string, type: number): string {
-  if (name === "GNU") return GNU_NOTE_TYPE[type] ?? `NT_UNKNOWN(${type})`;
-  if (name === "stapsdt") return STAPSDT_NOTE_TYPE[type] ?? `type(${type})`;
+  if (name === "GNU") {
+    return GNU_NOTE_TYPE[type] ?? `NT_UNKNOWN(${type})`;
+  }
+  if (name === "stapsdt") {
+    return STAPSDT_NOTE_TYPE[type] ?? `type(${type})`;
+  }
   return `type(${type})`;
 }
 
@@ -214,7 +248,9 @@ export function renderNotes(container: HTMLElement, elf: ELFFile): void {
   // Group by section
   const bySec = new Map<string, Note[]>();
   for (const n of notes) {
-    if (!bySec.has(n.sectionName)) bySec.set(n.sectionName, []);
+    if (!bySec.has(n.sectionName)) {
+      bySec.set(n.sectionName, []);
+    }
     bySec.get(n.sectionName)!.push(n);
   }
 
