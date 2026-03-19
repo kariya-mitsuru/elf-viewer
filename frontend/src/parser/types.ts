@@ -422,6 +422,8 @@ export interface EhFrameCIE {
   length: number; // total record byte size (including length field)
   version: number;
   augmentation: string;
+  addressSize: number; // DWARF v4+ .debug_frame only (0 otherwise)
+  segmentSelectorSize: number; // DWARF v4+ .debug_frame only (0 otherwise)
   codeAlignFactor: number;
   dataAlignFactor: number;
   returnAddressReg: number;
