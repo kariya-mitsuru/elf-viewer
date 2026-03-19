@@ -464,9 +464,11 @@ export interface EhFrameData {
   cies: EhFrameCIE[];
   fdes: EhFrameFDE[];
   hdr: EhFrameHdr | null;
-  sectionFileOffset: number; // file offset of .eh_frame
-  sectionVaddr: bigint; // virtual address of .eh_frame
+  sectionFileOffset: number; // file offset of .eh_frame / .debug_frame
+  sectionSize: number; // byte size of the section
+  sectionVaddr: bigint; // virtual address of .eh_frame / .debug_frame
   hdrSectionFileOffset: number | null; // file offset of .eh_frame_hdr
+  hdrSectionSize: number | null; // byte size of .eh_frame_hdr
 }
 
 // Top-level result returned by the ELF parser

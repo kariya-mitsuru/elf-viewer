@@ -377,6 +377,12 @@ export class App {
             case "gnu-hash":
               this.openGnuHashTab(elf);
               break;
+            case "eh-frame":
+              this.openEhFrameTab(elf);
+              break;
+            case "debug-frame":
+              this.openDebugFrameTab(elf);
+              break;
           }
         };
         view.render();
@@ -429,6 +435,12 @@ export class App {
               break;
             case "gnu-hash":
               this.openGnuHashTab(elf);
+              break;
+            case "eh-frame":
+              this.openEhFrameTab(elf);
+              break;
+            case "debug-frame":
+              this.openDebugFrameTab(elf);
               break;
           }
         };
@@ -584,6 +596,30 @@ export class App {
         }
         return regions;
       }
+      case "eh-frame": {
+        const ef = elf.ehFrame;
+        if (!ef) {
+          return [];
+        }
+        const regions: { label: string; offset: number; size: number }[] = [
+          { label: ".eh_frame", offset: ef.sectionFileOffset, size: ef.sectionSize },
+        ];
+        if (ef.hdrSectionFileOffset !== null && ef.hdrSectionSize !== null) {
+          regions.push({
+            label: ".eh_frame_hdr",
+            offset: ef.hdrSectionFileOffset,
+            size: ef.hdrSectionSize,
+          });
+        }
+        return regions;
+      }
+      case "debug-frame": {
+        const df = elf.debugFrame;
+        if (!df) {
+          return [];
+        }
+        return [{ label: ".debug_frame", offset: df.sectionFileOffset, size: df.sectionSize }];
+      }
       default:
         return [];
     }
@@ -651,6 +687,9 @@ export class App {
                 case "notes":
                   this.openNotesTab(elf);
                   break;
+                case "eh-frame":
+                  this.openEhFrameTab(elf);
+                  break;
               }
             }
           );
@@ -699,6 +738,12 @@ export class App {
                   break;
                 case "gnu-hash":
                   this.openGnuHashTab(elf);
+                  break;
+                case "eh-frame":
+                  this.openEhFrameTab(elf);
+                  break;
+                case "debug-frame":
+                  this.openDebugFrameTab(elf);
                   break;
               }
             }
