@@ -268,13 +268,14 @@ export const R_TYPE = (info: bigint): bigint => info & 0xffffffffn;
 //             ParseError is thrown during parsing.
 
 export interface ELFHeader {
+  ident: Uint8Array; // e_ident[0..15] (16 bytes, includes magic, class, data, version, OS/ABI, etc.)
   class: ELFClass; // 32 or 64 bit
   data: ELFData; // endianness
-  version: number; // EI_VERSION
   osabi: ELFOSABI;
   abiVersion: number;
   type: ELFType;
   machine: ELFMachine;
+  version: number; // e_version (file header version field)
   entryPoint: bigint;
   phOffset: number; // program header table file offset
   shOffset: number; // section header table file offset

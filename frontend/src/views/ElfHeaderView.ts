@@ -108,22 +108,23 @@ export function renderElfHeader(container: HTMLElement, elf: ELFFile): void {
   const hex = (n: number | bigint) => `0x${n.toString(16)}`;
   const dec = (n: number | bigint) => `${n}`;
 
+  const magic = Array.from(h.ident)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join(" ");
+
   const rows: [string, string][] = [
-    [
-      "Magic",
-      `7f 45 4c 46 ${h.class === ELFClass.ELF32 ? "01" : "02"} ${h.data === ELFData.LSB ? "01" : "02"} 01 00 00 00 00 00 00 00 00 00`,
-    ],
+    ["Magic", magic],
     ["Class", h.class === ELFClass.ELF64 ? "ELF64" : "ELF32"],
     [
       "Data",
       h.data === ELFData.LSB ? "2's complement, little endian" : "2's complement, big endian",
     ],
-    ["Version", `${h.version} (current)`],
+    ["Version", `${h.ident[6]}${h.ident[6] === 1 ? " (current)" : h.ident[6] === 0 ? "" : " <unknown>"}`],
     ["OS/ABI", osabiName(h.osabi)],
     ["ABI Version", dec(h.abiVersion)],
     ["Type", elfTypeName(elf)],
     ["Machine", machineName(h.machine)],
-    ["Version (ELF)", hex(1)],
+    ["Version (ELF)", hex(h.version)],
     ["Entry point address", hex(h.entryPoint)],
     ["Start of program headers", `${h.phOffset} (bytes into file)`],
     ["Start of section headers", `${h.shOffset} (bytes into file)`],
