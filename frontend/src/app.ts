@@ -217,6 +217,14 @@ export class App {
         group: "ELF Info",
         disabled: elf.sectionHeaders.length === 0,
       },
+      { id: "memory-map", label: "Memory Map", group: "Views", disabled: isObjFile },
+      {
+        id: "file-map",
+        label: "File Map",
+        group: "Views",
+        disabled: elf.sectionHeaders.length <= 1,
+      },
+      { id: "security", label: "Security", group: "Views" },
       {
         id: "symbols",
         label: "Symbols",
@@ -243,14 +251,6 @@ export class App {
       { id: "notes", label: "Notes", group: "Data", disabled: elf.notes.length === 0 },
       { id: "eh-frame", label: ".eh_frame", group: "DWARF", disabled: !elf.ehFrame },
       { id: "debug-frame", label: ".debug_frame", group: "DWARF", disabled: !elf.debugFrame },
-      { id: "security", label: "Security", group: "Views" },
-      { id: "memory-map", label: "Memory Map", group: "Views", disabled: isObjFile },
-      {
-        id: "file-map",
-        label: "File Map",
-        group: "Views",
-        disabled: elf.sectionHeaders.length <= 1,
-      },
     ]);
 
     // Open default view

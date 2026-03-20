@@ -734,6 +734,7 @@ button.section-nav-link:hover {
 }
 
 .info-table td { padding: 4px 12px; vertical-align: top; }
+.info-table tr:nth-child(even) td { background: rgba(69, 71, 90, 0.15); }
 .info-table tr:hover td { background: rgba(69, 71, 90, 0.3); }
 .info-label { color: #a6adc8; white-space: nowrap; padding-right: 24px; }
 .info-value { font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace; color: #cdd6f4; }
