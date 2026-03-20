@@ -88,8 +88,16 @@ export const SHF_ALLOC = 0x2n;
 export const SHF_EXECINSTR = 0x4n;
 export const SHF_MERGE = 0x10n;
 export const SHF_STRINGS = 0x20n;
+export const SHF_INFO_LINK = 0x40n;
+export const SHF_LINK_ORDER = 0x80n;
+export const SHF_OS_NONCONFORMING = 0x100n;
 export const SHF_GROUP = 0x200n;
 export const SHF_TLS = 0x400n;
+export const SHF_COMPRESSED = 0x800n;
+export const SHF_GNU_MBIND = 0x01000000n;
+export const SHF_EXCLUDE = 0x80000000n;
+export const SHF_MASKOS = 0x0ff00000n;
+export const SHF_MASKPROC = 0xf0000000n;
 
 // Program header type (p_type)
 export enum PHType {

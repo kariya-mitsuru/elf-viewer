@@ -23,8 +23,16 @@ import {
   SHF_EXECINSTR,
   SHF_MERGE,
   SHF_STRINGS,
+  SHF_INFO_LINK,
+  SHF_LINK_ORDER,
+  SHF_OS_NONCONFORMING,
   SHF_GROUP,
   SHF_TLS,
+  SHF_COMPRESSED,
+  SHF_GNU_MBIND,
+  SHF_EXCLUDE,
+  SHF_MASKOS,
+  SHF_MASKPROC,
   DF_1_PIE,
 } from "../parser/types.ts";
 
@@ -533,11 +541,39 @@ export function shFlagsStr(f: bigint): string {
   if (f & SHF_STRINGS) {
     s += "S";
   }
+  if (f & SHF_INFO_LINK) {
+    s += "I";
+  }
+  if (f & SHF_LINK_ORDER) {
+    s += "L";
+  }
+  if (f & SHF_OS_NONCONFORMING) {
+    s += "O";
+  }
   if (f & SHF_GROUP) {
     s += "G";
   }
   if (f & SHF_TLS) {
     s += "T";
+  }
+  if (f & SHF_COMPRESSED) {
+    s += "C";
+  }
+  if (f & SHF_EXCLUDE) {
+    s += "E";
+  }
+  if (f & SHF_GNU_MBIND) {
+    s += "D";
+  }
+  // Remaining OS-specific bits (excluding MBIND and EXCLUDE which are already handled)
+  const remainingOs = f & SHF_MASKOS & ~SHF_GNU_MBIND;
+  if (remainingOs) {
+    s += "o";
+  }
+  // Processor-specific bits (excluding EXCLUDE which overlaps MASKPROC)
+  const remainingProc = f & SHF_MASKPROC & ~SHF_EXCLUDE;
+  if (remainingProc) {
+    s += "p";
   }
   return s || "-";
 }
