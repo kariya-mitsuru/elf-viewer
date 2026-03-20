@@ -60,7 +60,12 @@ function regNameStr(n: number, machine: number): string {
 
 // ─── .eh_frame_hdr panel ─────────────────────────────────────────────────────
 
-function renderHdr(container: HTMLElement, hdr: EhFrameHdr, is64: boolean): void {
+function renderHdr(
+  container: HTMLElement,
+  hdr: EhFrameHdr,
+  is64: boolean,
+  ehFrameVaddr: bigint
+): void {
   const padW = is64 ? 16 : 8;
 
   // Header info table
@@ -99,15 +104,17 @@ function renderHdr(container: HTMLElement, hdr: EhFrameHdr, is64: boolean): void
 
   const table = document.createElement("table");
   table.className = "data-table";
-  table.innerHTML = `<thead><tr><th>#</th><th>Initial Location</th><th>FDE Address</th></tr></thead>`;
+  table.innerHTML = `<thead><tr><th>#</th><th>Initial Location</th><th>FDE Address</th><th>FDE Offset</th></tr></thead>`;
   const tbody = document.createElement("tbody");
   for (let i = 0; i < hdr.table.length; i++) {
     const e = hdr.table[i];
+    const fdeSectionOff = Number(e.fdeOffset - ehFrameVaddr);
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td class="mono">${i}</td>
       <td class="mono">${hexPad(e.initialLocation, padW)}</td>
       <td class="mono">${hexPad(e.fdeOffset, padW)}</td>
+      <td class="mono">${hexPad(fdeSectionOff, 8)}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -284,7 +291,7 @@ export function renderEhFrame(container: HTMLElement, elf: ELFFile): void {
   if (data.hdr) {
     tabs.push({
       label: `.eh_frame_hdr (${data.hdr.fdeCount} entries)`,
-      render: (panel: HTMLElement) => renderHdr(panel, data.hdr!, is64),
+      render: (panel: HTMLElement) => renderHdr(panel, data.hdr!, is64, data.sectionVaddr),
     });
   }
 
