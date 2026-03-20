@@ -87,7 +87,13 @@ export function renderSectionHeaders(
 
   const legend = document.createElement("p");
   legend.className = "view-note";
-  legend.textContent =
-    "Flags: W (write), A (alloc), X (execute), M (merge), S (strings), G (group), T (TLS)";
+  legend.innerHTML =
+    "Flags: W (write), A (alloc), X (execute), M (merge), S (strings), I (info),<br>" +
+    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
+    "L (link order), O (extra OS processing required), G (group), T (TLS),<br>" +
+    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
+    "C (compressed), x (unknown), o (OS specific), E (exclude),<br>" +
+    "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
+    "D (mbind), l (large), p (processor specific)";
   container.appendChild(legend);
 }
