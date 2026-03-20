@@ -191,6 +191,7 @@ function parseHeader(raw: Uint8Array): [ELFHeader, Cursor] {
 
   // File header (offset 16): fields read sequentially via Cursor
   const header: ELFHeader = {
+    ident: raw.slice(0, 16),
     class: cls,
     data,
     osabi: raw[7] as ELFOSABI,
