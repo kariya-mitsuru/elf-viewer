@@ -580,7 +580,7 @@ export function shFlagsStr(f: bigint): string {
 
 /** Program header flags → "RWX"-style string (spaces for missing bits). */
 export function phFlagsStr(f: number): string {
-  return `${f & PF_R ? "R" : " "}${f & PF_W ? "W" : " "}${f & PF_X ? "E" : " "}`;
+  return `${f & PF_R ? "R" : " "}${f & PF_W ? "W" : " "}${f & PF_X ? "X" : " "}`;
 }
 
 // ─── Search input factory ─────────────────────────────────────────────────────
