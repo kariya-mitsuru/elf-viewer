@@ -119,7 +119,10 @@ export function renderElfHeader(container: HTMLElement, elf: ELFFile): void {
       "Data",
       h.data === ELFData.LSB ? "2's complement, little endian" : "2's complement, big endian",
     ],
-    ["Version", `${h.ident[6]}${h.ident[6] === 1 ? " (current)" : h.ident[6] === 0 ? "" : " <unknown>"}`],
+    [
+      "Version",
+      `${h.ident[6]}${h.ident[6] === 1 ? " (current)" : h.ident[6] === 0 ? "" : " <unknown>"}`,
+    ],
     ["OS/ABI", osabiName(h.osabi)],
     ["ABI Version", dec(h.abiVersion)],
     ["Type", elfTypeName(elf)],
